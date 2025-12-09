@@ -26,6 +26,7 @@ from transformers.models.auto.modeling_auto import (
     MODEL_FOR_CAUSAL_LM_MAPPING_NAMES,
     MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING_NAMES,
 )
+from transformers import AutoTokenizer
 
 from lm_eval import utils
 from lm_eval.api.model import TemplateLM
@@ -43,13 +44,9 @@ from lm_eval.models.utils import (
     stop_sequences_criteria,
 )
 from hyena_model import HyenaModel
-from transformers import AutoTokenizer
+
 import os
 from dotenv import load_dotenv
-
-load_dotenv()
-checkpoint_root = os.getenv('CHECKPOINT_ROOT')
-data_root = os.getenv('DATA_ROOT')
 
 if TYPE_CHECKING:
     from transformers.quantizers.auto import AutoQuantizationConfig
@@ -60,7 +57,7 @@ eval_logger = logging.getLogger(__name__)
 TOKENIZER_INFINITY = 1000000000000000019884624838656
 
 
-@register_model("custom-hyena")
+@register_model("hyena_allfeatures")
 class HFLM(TemplateLM):
     """An abstracted Huggingface model class. Enables usage with both models of
     `transformers.AutoModelForCausalLM` and `transformers.AutoModelForSeq2SeqLM` classes.
@@ -95,12 +92,35 @@ class HFLM(TemplateLM):
         use_fast_tokenizer: bool | None = True,
         add_bos_token: bool | None = None,
         prefix_token_id: int | None = None,
+        # arguments used for splitting a model across GPUs naively.
+        # only used if `parallelize=True`.
         parallelize: bool | None = False,
         max_memory_per_gpu: int | str | None = None,
         max_cpu_memory: int | str | None = None,
+        offload_folder: str | os.PathLike | None = "./offload",
+        # PEFT, delta weights and quantization options
+        peft: str | None = None,
+        delta: str | None = None,
+        autogptq: bool | str | None = False,
+        gptqmodel: bool | None = False,
+        gguf_file: str | None = None,
+        # end token for thinking, either the string or int token id.
+        # splits to get response after this token (if provided).
+        think_end_token: str | int | None = None,
+        enable_thinking: bool | None = None,
+        chat_template_args: dict[str, Any] | None = None,
         **kwargs,
     ) -> None:
         super().__init__()
+
+        load_dotenv()
+        self.checkpoint_root = os.getenv('CHECKPOINT_ROOT')
+        self.data_root = os.getenv('DATA_ROOT')
+
+        self.dim = 512
+        self.depth = 16
+        self.length = 1024
+
         # optionally: take in an already-initialized transformers.PreTrainedModel
         if not isinstance(pretrained, str):
             eval_logger.warning(
@@ -177,7 +197,18 @@ class HFLM(TemplateLM):
 
             revision = str(revision)  # cast to string if not already one
 
-        self.backend = 'causal'
+            self._get_config(
+                pretrained,
+                revision=revision,
+                trust_remote_code=trust_remote_code,
+                gguf_file=gguf_file,
+                subfolder=subfolder,
+            )
+
+            # determine which of 'causal' and 'seq2seq' backends to use for HF models
+        self._get_backend(
+            config=self.config, backend=backend, trust_remote_code=trust_remote_code
+        )
 
         # load tokenizer so we know tokenizer vocabulary size before loading model and PEFT
         self._create_tokenizer(
@@ -187,6 +218,7 @@ class HFLM(TemplateLM):
             subfolder=subfolder,
             trust_remote_code=trust_remote_code,
             use_fast_tokenizer=use_fast_tokenizer,
+            gguf_file=gguf_file,
             add_bos_token=add_bos_token,
         )
 
@@ -208,6 +240,12 @@ class HFLM(TemplateLM):
                 gpus=gpus,
                 max_memory_per_gpu=max_memory_per_gpu,
                 max_cpu_memory=max_cpu_memory,
+                offload_folder=offload_folder,
+                peft=peft,
+                delta=delta,
+                autogptq=autogptq,
+                gptqmodel=gptqmodel,
+                gguf_file=gguf_file,
                 quantization_config=quantization_config,
                 subfolder=subfolder,
                 **kwargs,
@@ -218,16 +256,28 @@ class HFLM(TemplateLM):
             self.model.eval()
             self.model.tie_weights()
 
-
+        self.think_end_token = (
+            int(think_end_token)
+            if (isinstance(think_end_token, str) and think_end_token.isdigit())
+            else think_end_token
+        )
         self.truncation = truncation
         self.logits_cache = logits_cache
         self.vocab_size = self.tokenizer.vocab_size
         # select (or create) a pad token to use
         self.tokenizer = configure_pad_token(self.tokenizer, model_config=self.config)
+        self.chat_template_args = (
+            chat_template_args or {} | dict(enable_thinking=enable_thinking)
+            if enable_thinking is not None
+            else {}
+        )
+
         self.add_bos_token = add_bos_token
 
         self._max_length = max_length
         self.pretrained = pretrained
+        self.delta = delta
+        self.peft = peft
         self.revision = revision
         self.batch_schedule = 1
         self.batch_sizes = {}
@@ -249,9 +299,19 @@ class HFLM(TemplateLM):
             self.batch_size_per_gpu = int(batch_size)
 
         if isinstance(pretrained, str):
-            if (gpus >= 1 or str(self.device) == "mps") and not (hasattr(self, "accelerator")):
-                self.model.to(self.device)
- 
+            if (gpus >= 1 or str(self.device) == "mps") and not (
+                parallelize or autogptq or hasattr(self, "accelerator")
+            ):
+                # TODO: can remove this whole snippet except in the mps case, perhaps?
+                # place model onto device requested manually,
+                # if not using HF Accelerate or device_map
+                # or any other option that preloads model onto device
+                try:
+                    self.model.to(self.device)
+                except ValueError:
+                    eval_logger.debug(
+                        "Failed to place model onto specified device. This may be because the model is quantized via `bitsandbytes` or `device_map` is provided. If the desired GPU is being used, this message is safe to ignore."
+                    )
             # multigpu data-parallel support when launched with accelerate
             if gpus > 1:
                 if accelerator.num_processes > 1:
@@ -445,8 +505,105 @@ class HFLM(TemplateLM):
     def tokenizer_name(self) -> str:
         return self.tokenizer.name_or_path.replace("/", "__")
 
+    def _get_backend(
+        self,
+        config: transformers.PretrainedConfig | transformers.AutoConfig,
+        backend: Literal["default", "causal", "seq2seq"] = "default",
+        trust_remote_code: bool | None = False,
+    ) -> None:
+        """Helper method during initialization.
+
+        Determines the backend ("causal" (decoder-only) or "seq2seq" (encoder-decoder)) model type to be used.
+        sets `self.AUTO_MODEL_CLASS` appropriately if not already set.
+
+        **If not calling HFLM.__init__() or HFLM._get_backend() within a subclass of HFLM,
+        user must set `self.backend` to be either "causal" or "seq2seq" manually!**
+        """
+
+        assert backend in ["default", "causal", "seq2seq"]
+
+        if backend != "default":
+            # if we've settled on non-default backend, use that manually
+            if backend in ["causal", "seq2seq"]:
+                self.backend = backend
+            eval_logger.info(
+                f"Overrode HF model backend type, and using type '{self.backend}'"
+            )
+        else:
+            # determine and use the default HF backend for this model, based on its config + metadata.
+            if (
+                getattr(config, "model_type", None)
+                in MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING_NAMES
+            ):
+                # first check if model type is listed under seq2seq models, since some
+                # models like MBart are listed in both seq2seq and causal mistakenly in HF transformers.
+                # these special cases should be treated as seq2seq models.
+                self.backend = "seq2seq"
+                eval_logger.debug(f"Using model type '{self.backend}'")
+            elif (
+                getattr(config, "model_type", None) in MODEL_FOR_CAUSAL_LM_MAPPING_NAMES
+            ):
+                self.backend = "causal"
+                eval_logger.debug(f"Using model type '{self.backend}'")
+            else:
+                if not trust_remote_code:
+                    eval_logger.warning(
+                        "HF model type is neither marked as CausalLM or Seq2SeqLM. \
+                    This is expected if your model requires `trust_remote_code=True` but may be an error otherwise."
+                        "Setting backend to causal"
+                    )
+                # if model type is neither in HF transformers causal or seq2seq model registries
+                # then we default to assuming AutoModelForCausalLM
+                self.backend = "causal"
+                eval_logger.info(
+                    f"Model type cannot be determined. Using default model type '{self.backend}'"
+                )
+
+        if self.AUTO_MODEL_CLASS is None:
+            if self.backend == "causal":
+                self.AUTO_MODEL_CLASS = transformers.AutoModelForCausalLM
+            elif self.backend == "seq2seq":
+                self.AUTO_MODEL_CLASS = transformers.AutoModelForSeq2SeqLM
+
+    def _get_config(
+        self,
+        pretrained: str,
+        revision: str = "main",
+        trust_remote_code: bool = False,
+        gguf_file: str | None = None,
+        subfolder: str = "",
+    ) -> None:
+        """Return the model config for HuggingFace models."""
+        self._config = transformers.AutoConfig.from_pretrained(
+            pretrained,
+            revision=revision,
+            trust_remote_code=trust_remote_code,
+            gguf_file=gguf_file,
+            subfolder=subfolder,
+        )
+
     def _create_model(
         self,
+        pretrained: str,
+        revision: str | None = "main",
+        dtype: str | torch.dtype | None = "auto",
+        trust_remote_code: bool | None = False,
+        # arguments used for splitting a model across GPUs naively.
+        # only used if `parallelize=True`.
+        # (accelerate naive PP (device_map) options)
+        parallelize: bool | None = False,
+        gpus: int | None = None,
+        max_memory_per_gpu: int | str | None = None,
+        max_cpu_memory: int | str | None = None,
+        offload_folder: str | None = "./offload",
+        # PEFT, delta weights and quantization options
+        peft: str | None = None,
+        delta: str | None = None,
+        autogptq: bool | str | None = False,
+        gptqmodel: bool | None = False,
+        gguf_file: str | None = None,
+        quantization_config: AutoQuantizationConfig | None = None,
+        subfolder: str = "",
         **kwargs,
     ) -> None:
         """Initializes an HF or HF-compatible PreTrainedModel from scratch
@@ -460,14 +617,13 @@ class HFLM(TemplateLM):
         please consider subclassing HFLM and overriding this and other methods as needed.
         """
 
-        model_path = os.join(data_root, 'fineweb_hyena_512_n16_c1024_b32x2/checkpoint-200000/pytorch_model.bin')
-        dim = 512
-        depth = 16
-        length = 1024
-        n_vocab = self.tokenizer.vocab_size
-        model = HyenaModel(n_vocab, dim, depth, length)
+        model_path = os.join(self.data_root, 'fineweb_hyena_512_n16_c1024_b32x2/checkpoint-200000/pytorch_model.bin')
+        n_vocab = self.tokenizer.vocab_size # 8000
+
+        model = HyenaModel(self.n_vocab, self.dim, self.depth, self.max_length)
         model.load_state_dict(torch.load(model_path))
-        self._model = model
+        self.model = model
+        return
 
     def _create_tokenizer(
         self,
@@ -483,12 +639,7 @@ class HFLM(TemplateLM):
         add_bos_token: bool | None = None,
         subfolder: str | None = "",
     ) -> None:
-        """Helper method during initialization.
-
-        Create a tokenizer object corresponding to the correct
-        tokenizer for value of `pretrained`, or use the pre-initialized tokenizer passed.
-        """
-        self.tokenizer = AutoTokenizer.from_pretrained(checkpoint_root + '/tokenizer_fineweb_8k')
+        self.tokenizer = AutoTokenizer.from_pretrained(self.data_root + '/tokenizer_fineweb_8k')
 
     def _detect_batch_size(self, requests: Sequence | None = None, pos: int = 0):
         if requests:
@@ -650,19 +801,7 @@ class HFLM(TemplateLM):
                 enabled=self.mixed_precision_dtype is not None,
             ),
         ):
-            return self.model(
-                input_ids=inps, labels=labels
-            )
-
-    def model_generate(self, input_ids, max_length, stopping_criterea, pad_token_id, use_cache=True):
-        while True:
-            logits = self._model_call(input_ids)
-            next_token_prediction = torch.argmax(logits[-1])
-            input_ids.append(next_token_prediction)
-            if len(input_ids) == max_length or next_token_prediction in stopping_criterea:
-                break
-        return 
-            
+            return self.model(inps)
 
     def _model_generate(
         self,
@@ -693,7 +832,7 @@ class HFLM(TemplateLM):
             dtype=self.mixed_precision_dtype,
             enabled=self.mixed_precision_dtype is not None,
         ):
-            return self.model_generate(
+            return self.model.generate(
                 input_ids=context,
                 max_length=max_length,
                 stopping_criteria=stopping_criteria,
@@ -839,11 +978,22 @@ class HFLM(TemplateLM):
 
         def _collate(req: tuple[tuple[str, str], list[int], list[int]]):
             """Defines the key for the sorted method."""
+            # the negative sign on len(toks) sorts descending - this has a few advantages:
+            # - time estimates will always be over not underestimates, which is more useful for planning
+            # - to know the size of a batch when going through the list, you know the first one is always the batch
+            #   padded context length. this is useful to simplify the batching logic and more importantly to make
+            #   automatic adaptive batches much much easier to implement
+            # - any OOMs will happen right away rather than near the end
+
             toks = req[1] + req[2]
             return -len(toks), tuple(toks)
 
         def _lookup_one_token_cont(req: tuple[tuple[str, str], list[int], list[int]]):
             """Defines the key to group and lookup one-token continuations."""
+            # Use with group_by="contexts" (optional)"
+            # allows for the creation of a lookup, so we can reuse logits in case of one-token continuations.
+            # speeds up some multiple-choice tasks proportionally to the number of choices.
+            # groups requests by context+continuation[:-1] and infer on one request/group.
             return req[-2] + req[-1][:-1]
 
         re_ord = Collator(
@@ -855,6 +1005,8 @@ class HFLM(TemplateLM):
             group_fn=_lookup_one_token_cont,
         )
 
+        # automatic (variable) batch size detection for vectorization
+        # pull longest context sample from request
         n_reordered_requests = len(re_ord)
         batch_size = (
             self.batch_size

@@ -19,11 +19,10 @@ from einops import rearrange
 import transformers
 from transformers import AutoTokenizer, LlamaConfig
 import torch.nn as nn
-import mlflow
 import datasets
 from datasets import load_dataset, load_from_disk
 import safetensors
-from transformers.generation import GenerationMixin
+from transformers.generation import GenerationMixin, GenerationConfig
 from transformers.modeling_outputs import CausalLMOutput
 
 def fftconv(u, k, D):
@@ -324,7 +323,10 @@ class HyenaModel(nn.Module, GenerationMixin):
 		self.main_input_name = 'input_ids'
 		self._supports_cache_class = False
 		self.device = self.wte.weight.device
-		config_args = llama_config_kwargs = {
+		generation_config_args = {'max_length': length}
+		self.generation_config = GenerationConfig(**generation_config_args)
+		print (self.generation_config)
+		config_args =  {
         		'hidden_size': dim,
         		'intermediate_size': 4*dim,
         		'num_hidden_layers': depth,
@@ -332,12 +334,18 @@ class HyenaModel(nn.Module, GenerationMixin):
 			'max_length': length
     		}
 		self.config = LlamaConfig(**config_args)
+		#self._is_stateful = False
 
+	def _is_stateful(self):
+		return False
+	
 	def can_generate(self):
 		return True
 
 	def forward(self, input_ids, labels=None, **kwargs):
 		x = input_ids
+		#print (x.shape)
+		#x = x[:, x.shape[1] - max_length:] # take last max_length tokens
 		x = self.wte(x)
 		for i, block in enumerate(self.mixerblocks):
 			x = block(x)

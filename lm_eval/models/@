@@ -119,7 +119,7 @@ class HyenaHFLM(TemplateLM):
 
         self.dim = 512
         self.depth = 16
-        self.length = 1024
+        self.length = 512
         self._max_length = self.length
         # optionally: take in an already-initialized transformers.PreTrainedModel
         if not isinstance(pretrained, str):
@@ -1291,7 +1291,9 @@ class HyenaHFLM(TemplateLM):
             context_enc = context_enc.to(self.device)
             attn_masks = attn_masks.to(self.device)
 
-            kwargs["max_length"] = self.length
+            if "max_length" not in kwargs:
+                kwargs["max_length"] = context_enc.shape[1] + max_gen_toks
+
             # perform batched generation
             cont = self._model_generate(
                 context=context_enc,

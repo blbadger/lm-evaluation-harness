@@ -26,7 +26,7 @@ from transformers.models.auto.modeling_auto import (
     MODEL_FOR_CAUSAL_LM_MAPPING_NAMES,
     MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING_NAMES,
 )
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, LlamaConfig
 
 from lm_eval import utils
 from lm_eval.api.model import TemplateLM
@@ -43,7 +43,7 @@ from lm_eval.models.utils import (
     postprocess_generated_text,
     stop_sequences_criteria,
 )
-from hyena_model import HyenaModel
+from lm_eval.models.hyena_model import HyenaModel
 
 import os
 from dotenv import load_dotenv
@@ -57,8 +57,8 @@ eval_logger = logging.getLogger(__name__)
 TOKENIZER_INFINITY = 1000000000000000019884624838656
 
 
-@register_model("hyena_allfeatures")
-class HFLM(TemplateLM):
+@register_model("hyena", "hyena-full")
+class HyenaHFLM(TemplateLM):
     """An abstracted Huggingface model class. Enables usage with both models of
     `transformers.AutoModelForCausalLM` and `transformers.AutoModelForSeq2SeqLM` classes.
 
@@ -117,10 +117,10 @@ class HFLM(TemplateLM):
         self.checkpoint_root = os.getenv('CHECKPOINT_ROOT')
         self.data_root = os.getenv('DATA_ROOT')
 
-        self.dim = 512
+        self.dim = 128
         self.depth = 16
-        self.length = 1024
-
+        self.length = 512
+        self._max_length = self.length
         # optionally: take in an already-initialized transformers.PreTrainedModel
         if not isinstance(pretrained, str):
             eval_logger.warning(
@@ -221,7 +221,8 @@ class HFLM(TemplateLM):
             gguf_file=gguf_file,
             add_bos_token=add_bos_token,
         )
-
+        self.n_vocab = self.tokenizer.vocab_size
+        
         if (
             quantization_config := getattr(self.config, "quantization_config", None)
         ) is not None and isinstance(quantization_config, dict):
@@ -254,7 +255,6 @@ class HFLM(TemplateLM):
         # access self._model through self.model property outside this method
         if isinstance(self.model, torch.nn.Module):
             self.model.eval()
-            self.model.tie_weights()
 
         self.think_end_token = (
             int(think_end_token)
@@ -574,13 +574,7 @@ class HFLM(TemplateLM):
         subfolder: str = "",
     ) -> None:
         """Return the model config for HuggingFace models."""
-        self._config = transformers.AutoConfig.from_pretrained(
-            pretrained,
-            revision=revision,
-            trust_remote_code=trust_remote_code,
-            gguf_file=gguf_file,
-            subfolder=subfolder,
-        )
+        self._config = LlamaConfig(vocab_size=8000, hidden_size = self.dim)
 
     def _create_model(
         self,
@@ -617,12 +611,12 @@ class HFLM(TemplateLM):
         please consider subclassing HFLM and overriding this and other methods as needed.
         """
 
-        model_path = os.join(self.data_root, 'fineweb_hyena_512_n16_c1024_b32x2/checkpoint-200000/pytorch_model.bin')
+        model_path = pretrained
         n_vocab = self.tokenizer.vocab_size # 8000
 
         model = HyenaModel(self.n_vocab, self.dim, self.depth, self.max_length)
         model.load_state_dict(torch.load(model_path))
-        self.model = model
+        self._model = model
         return
 
     def _create_tokenizer(
@@ -639,7 +633,9 @@ class HFLM(TemplateLM):
         add_bos_token: bool | None = None,
         subfolder: str | None = "",
     ) -> None:
+        #TODO: padding seems to occur using 0 (bos token), check if this is intended
         self.tokenizer = AutoTokenizer.from_pretrained(self.data_root + '/tokenizer_fineweb_8k')
+        self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
 
     def _detect_batch_size(self, requests: Sequence | None = None, pos: int = 0):
         if requests:
@@ -1132,7 +1128,7 @@ class HFLM(TemplateLM):
                 }
 
             multi_logits = F.log_softmax(
-                self._model_call(batched_inps, **call_kwargs),
+                self._model_call(batched_inps, **call_kwargs).logits,
                 dim=-1,
                 dtype=self.softmax_dtype,
             )  # [batch, padding_length (inp or cont), vocab]

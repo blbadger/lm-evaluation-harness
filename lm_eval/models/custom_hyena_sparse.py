@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 import torch
 from lm_eval.api.registry import register_model
 
-@register_model("custom_hyena")
+@register_model("hyena_sparse")
 class MyCustomLM(LM):
 
     def __init__(self, dim=512, n_ctx=1024):

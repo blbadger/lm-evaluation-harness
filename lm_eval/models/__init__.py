@@ -29,6 +29,7 @@ MODEL_MAPPING = {
     "dummy": "lm_eval.models.dummy:DummyLM",
     "ggml": "lm_eval.models.gguf:GGUFLM",
     "gguf": "lm_eval.models.gguf:GGUFLM",
+    "hyena": "lm_eval.models.custom_hyena:HyenaHFLM",
     "hf": "lm_eval.models.huggingface:HFLM",
     "hf-audiolm-qwen": "lm_eval.models.hf_audiolm:HFAudioLM",
     "hf-auto": "lm_eval.models.huggingface:HFLM",

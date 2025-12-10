@@ -17,13 +17,14 @@ from prettytable import PrettyTable
 import torch
 from einops import rearrange
 import transformers
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, LlamaConfig
 import torch.nn as nn
 import mlflow
 import datasets
 from datasets import load_dataset, load_from_disk
 import safetensors
-from transfomers.generation import GenerationMixin
+from transformers.generation import GenerationMixin
+from transformers.modeling_outputs import CausalLMOutput
 
 def fftconv(u, k, D):
 	seqlen = u.shape[-1]
@@ -323,6 +324,14 @@ class HyenaModel(nn.Module, GenerationMixin):
 		self.main_input_name = 'input_ids'
 		self._supports_cache_class = False
 		self.device = self.wte.weight.device
+		config_args = llama_config_kwargs = {
+        		'hidden_size': dim,
+        		'intermediate_size': 4*dim,
+        		'num_hidden_layers': depth,
+        		'vocab_size': n_vocab,
+			'max_length': length
+    		}
+		self.config = LlamaConfig(**config_args)
 
 	def can_generate(self):
 		return True
@@ -333,12 +342,13 @@ class HyenaModel(nn.Module, GenerationMixin):
 		for i, block in enumerate(self.mixerblocks):
 			x = block(x)
 		output = self.lm_head(x)
-		if labels.dim() > 2:
+		if labels is not None and labels.dim() > 2:
+			output = rearrange(output, 'b t e -> b e t')
 			labels = rearrange(labels, 'b p t -> b (p t)')
-		output = rearrange(output, 'b t e -> b e t')
-		shift_logits = output[..., :-1].contiguous()
-		shift_labels = labels[..., 1:].contiguous()
-		loss = self.cel(shift_logits, shift_labels)
-		return loss, output
-	
+			shift_logits = output[..., :-1].contiguous()
+			shift_labels = labels[..., 1:].contiguous()
+			loss = self.cel(shift_logits, shift_labels)
+			return CausalLMOutput(loss=loss, logits=output)
+		else:
+			return CausalLMOutput(loss=0, logits=output)
 

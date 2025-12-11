@@ -66,7 +66,7 @@ class HyenaHFLM(TemplateLM):
     """
 
     AUTO_MODEL_CLASS = None
-    _DEFAULT_MAX_LENGTH = 2048
+    _DEFAULT_MAX_LENGTH = 1024
 
     def __init__(
         self,
@@ -121,6 +121,7 @@ class HyenaHFLM(TemplateLM):
         self.depth = 16
         self.length = 1024
         self._max_length = self.length
+        self.max_gen_length = 2048
         # optionally: take in an already-initialized transformers.PreTrainedModel
         if not isinstance(pretrained, str):
             eval_logger.warning(
@@ -613,7 +614,7 @@ class HyenaHFLM(TemplateLM):
 
         model_path = pretrained
         n_vocab = self.tokenizer.vocab_size # 8000
-
+        print (self.max_length) 
         model = HyenaModel(self.n_vocab, self.dim, self.depth, self.max_length)
         model.load_state_dict(torch.load(model_path))
         self._model = model
@@ -733,7 +734,6 @@ class HyenaHFLM(TemplateLM):
         # encode a batch of strings. converts to tensors and pads automatically, unlike tok_encode.
         old_padding_side = self.tokenizer.padding_side
         self.tokenizer.padding_side = padding_side
-
         add_special_tokens = {}
         if self.backend == "causal":
             if has_bos_prefix(strings[0], getattr(self.tokenizer, "bos_token", None)):
@@ -1290,8 +1290,12 @@ class HyenaHFLM(TemplateLM):
             )
             context_enc = context_enc.to(self.device)
             attn_masks = attn_masks.to(self.device)
-
-            kwargs["max_length"] = self.length
+            # truncate input if necessary
+            context_enc, attn_masks = context_enc[:, -980:], attn_masks[:, -980:]
+            print(context_enc.shape, self.max_length)
+            print (context_enc)
+            print (f'\n\n Decoded input: {self.tokenizer.decode(context_enc[0])}')
+            kwargs["max_length"] = 1024
             # perform batched generation
             cont = self._model_generate(
                 context=context_enc,

@@ -227,7 +227,7 @@ class MLPMixer(nn.Module, GenerationMixin):
 		config  = {
 				 'hidden_size':hidden_dim,
 				 'intermediate_size': 4*hidden_dim,
-				 'num_hidden_layers': layers,
+				 'num_hidden_layers': num_blocks,
 				 'num_attention_heads': n_heads,
 				 'vocab_size': vocab_size
 			 }

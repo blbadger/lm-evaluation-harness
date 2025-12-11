@@ -357,11 +357,11 @@ class EvaluatorConfig:
             metadata=self.metadata if self.metadata else {},
         )
 
-        # Normalize tasks to a list
+        # Normalize tasks to a list: NB that this is modified from the original to account for self.tasks being an array
         task_list = (
-            self.tasks.split(",") if isinstance(self.tasks, str) else list(self.tasks)
+            self.tasks[0].split(",") if isinstance(self.tasks[0], str) else list(self.tasks[0])
         )
-
+        
         # Handle directory input
         if len(task_list) == 1 and Path(task_list[0]).is_dir():
             task_names = []

@@ -323,7 +323,7 @@ class HyenaModel(nn.Module, GenerationMixin):
 		self.main_input_name = 'input_ids'
 		self._supports_cache_class = False
 		self.device = self.wte.weight.device
-		max_input_length=2048
+		max_input_length= 1024
 		generation_config_args = {'max_length': max_input_length}
 		self.generation_config = GenerationConfig(**generation_config_args)
 		print (self.generation_config)

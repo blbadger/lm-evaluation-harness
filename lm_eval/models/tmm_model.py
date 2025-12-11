@@ -228,7 +228,7 @@ class MLPMixer(nn.Module, GenerationMixin):
 				 'hidden_size': hidden_dim,
 				 'intermediate_size': 4*hidden_dim,
 				 'num_hidden_layers': num_blocks,
-				 'num_attention_heads': heads,
+				 'num_attention_heads': 4, # mock heads
 				 'vocab_size': vocab_size
 			 }
 		self.config = LlamaConfig(**config)
@@ -259,18 +259,22 @@ class MLPMixer(nn.Module, GenerationMixin):
 		return sum(p.numel() for p in self.parameters() if p.requires_grad)
 
 	def forward(self, input_ids, labels=None, **kwargs):
+		#print (input_ids.shape)
+		input_length = input_ids.shape[1]
+		pad_size = self.seq_len - input_ids.shape[1]
+		pad_tokens = torch.ones(input_ids.shape[0], pad_size, dtype=torch.long).to(input_ids.device)
 		# pad input_ids
-		pad_sizes = [self.seq_len - len(input_ids[i]) for i in range(len(input_ids))]
-		input_lengths = [len(input_ids[i]) for i in range(len(input_ids))]
-
-		padded_inputs = []
-		for i in range(len(input_ids)):
-			input_id_arr = input_ids[i].unsqueeze(0)
-			pad = torch.ones(pad_sizes[i], dtype=torch.long).to(input_ids.device).unsqueeze(0)
-			padded_input = torch.cat((input_id_arr, pad), dim=1)
-			padded_inputs.append(padded_input)
-		input_ids = torch.cat(padded_inputs, dim=0)
-		labels = torch.where(input_ids==1, -100, input_ids) #mask pad token loss
+		#pad_sizes = [self.seq_len - len(input_ids[i]) for i in range(len(input_ids))]
+		#input_lengths = [len(input_ids[i]) for i in range(len(input_ids))]
+		input_ids = torch.cat((input_ids, pad_tokens), dim=1)
+		#padded_inputs = []
+		#for i in range(len(input_ids)):
+		#	input_id_arr = input_ids[i].unsqueeze(0)
+		#	pad = torch.ones(pad_sizes[i], dtype=torch.long).to(input_ids.device).unsqueeze(0)
+		#	padded_input = torch.cat((input_id_arr, pad), dim=1)
+		#	padded_inputs.append(padded_input)
+		#input_ids = torch.cat(padded_inputs, dim=0)
+		#labels = torch.where(input_ids==1, -100, input_ids) #mask pad token loss
 
 		if labels is not None:
 			labels = labels[:, 1:].contiguous()
@@ -280,14 +284,15 @@ class MLPMixer(nn.Module, GenerationMixin):
 		for block in self.mixer_blocks:
 			x = block(x)
 		logits = self.output_layer(x)
-		logits = logits[:, :-1].contiguous()
+		truncated_logits = logits[:, :input_length, :]
 
-		truncated_logits = []
-		for i in range(logits.shape[0]):
-			truncated_logits.append(logits[i, :input_lengths[i]])
-		truncated_logits = torch.stack(truncated_logits, dim=0)
+		#truncated_logits = []
+		#for i in range(logits.shape[0]):
+		#	truncated_logits.append(logits[i, :input_lengths[i]])
+		#truncated_logits = torch.stack(truncated_logits, dim=0)
 
 		if labels is not None:
+			logits = logits[:, :-1].contiguous()
 			logits = logits.view(-1, self.vocab_size)
 			labels = labels.view(-1)
 

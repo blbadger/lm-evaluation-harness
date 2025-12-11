@@ -44,6 +44,7 @@ from lm_eval.models.utils import (
     stop_sequences_criteria,
 )
 from lm_eval.models.tmm_model import MLPMixer
+import safetensors
 
 import os
 from dotenv import load_dotenv

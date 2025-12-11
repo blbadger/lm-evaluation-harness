@@ -617,7 +617,7 @@ class TMMHFLM(TemplateLM):
 
         model_path = pretrained
         n_vocab = self.tokenizer.vocab_size # 8000
-        model = MLPMixer(self.n_vocab, self.dim, self.max_length, self.depth, self.heads, self.kernel, expanded_convs=False)
+        model = MLPMixer(self.n_vocab, self.dim, self.max_length, self.depth, heads=self.heads, kernel=self.kernel, expanded_convs=False)
         safetensors.torch.load_model(model, model_path)
         self._model = model
         return

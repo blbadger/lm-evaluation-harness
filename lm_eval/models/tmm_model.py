@@ -213,7 +213,7 @@ class MLPMixer(nn.Module, GenerationMixin):
 		self.mixer_blocks = nn.ModuleList(
 			[
 				MixerBlock(
-					hidden_dim, seq_len, heads=heads, expanded_convs=expanded_convs, kernel=kernel
+					hidden_dim, seq_len, heads=heads, expanded_convs=expanded_convs
 				)
 				for _ in range(num_blocks)
 			]

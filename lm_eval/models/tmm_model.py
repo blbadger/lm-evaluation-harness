@@ -225,10 +225,10 @@ class MLPMixer(nn.Module, GenerationMixin):
 
 		self.generation_config = GenerationConfig()
 		config  = {
-				 'hidden_size':hidden_dim,
+				 'hidden_size': hidden_dim,
 				 'intermediate_size': 4*hidden_dim,
 				 'num_hidden_layers': num_blocks,
-				 'num_attention_heads': n_heads,
+				 'num_attention_heads': heads,
 				 'vocab_size': vocab_size
 			 }
 		self.config = LlamaConfig(**config)

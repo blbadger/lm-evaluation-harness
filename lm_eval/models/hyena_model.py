@@ -344,7 +344,7 @@ class HyenaModel(nn.Module, GenerationMixin):
 		return True
 
 	def forward(self, input_ids, labels=None, **kwargs):
-		x = input_ids
+		x = input_ids[:, -self.max_length:]
 		x = self.wte(x)
 		for i, block in enumerate(self.mixerblocks):
 			x = block(x)

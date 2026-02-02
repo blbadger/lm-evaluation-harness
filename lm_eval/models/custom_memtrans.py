@@ -617,15 +617,15 @@ class MemtransHFLM(TemplateLM):
 
         model_path = pretrained
         n_vocab = self.tokenizer.vocab_size # will be 8000
-        model = ObjectiveMemoryTransformer(self.n_vocab, 
+        model = ObjectiveMemoryTransformer(
+            self.n_vocab, 
             self.dim, 
             self.dim, 
-            self.max_length, 
             self.depth, 
             self.length, 
             objective='clm',
             compression=1, 
-            heads=self.heads, 
+            n_heads=4, 
             fixed_memory=True,
             frozen_encoder=None, # encoder weights loaded below
             no_memory=False,

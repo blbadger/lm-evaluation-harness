@@ -3,12 +3,10 @@ import torch
 import torch.nn as nn
 from einops import rearrange
 import transformers
+from transformers.modeling_outputs import CausalLMOutput
 from transformers import AutoTokenizer, LlamaConfig, LlamaForCausalLM, LlamaModel
 from transformers.generation import GenerationMixin, GenerationConfig
-from peft.peft_model import PeftModelForCausalLM
-import mlflow
 from datasets import load_dataset
-from mixer_autoencoder import MixerBlock
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -159,11 +157,11 @@ class ObjectiveMemoryTransformer(nn.Module, GenerationMixin):
 
 		self.generation_config = GenerationConfig()
 		config  = {
-				 'hidden_size': hidden_dim,
-				 'intermediate_size': 4*hidden_dim,
-				 'num_hidden_layers': num_blocks,
+				 'hidden_size': dim,
+				 'intermediate_size': 4*dim,
+				 'num_hidden_layers': depth,
 				 'num_attention_heads': 4, # mock heads
-				 'vocab_size': vocab_size
+				 'vocab_size': n_vocab 
 			 }
 		self.config = LlamaConfig(**config)
 		self.main_input_name = 'input_ids'
@@ -171,7 +169,7 @@ class ObjectiveMemoryTransformer(nn.Module, GenerationMixin):
 		generation_config_args = {'max_length': max_input_length}
 		self.max_length = length
 		self._supports_cache_class = False
-		self.device = self.output_layer.weight.device
+		self.device = self.encoder.device
 		self.generation_config = GenerationConfig(**generation_config_args)
 
 	def can_generate(self):
@@ -224,7 +222,7 @@ class ObjectiveMemoryTransformer(nn.Module, GenerationMixin):
 				if attention_mask is not None:
 					attention_mask = torch.cat((torch.ones(input_ids.shape[0], c).to(device), attention_mask), dim=1)
 				# feed pre-concatenated input embeddings to the transformer decoder
-				x = self.decoder(inputs_embeds=x, attention_mask=attention_mask)
+				x = self.decoder(inputs_embeds=x.to(self.lm_head.weight.dtype), attention_mask=attention_mask)
 				output = self.lm_head(x.last_hidden_state)
 
 				if labels is not None and labels.dim() > 2:
@@ -241,19 +239,16 @@ class ObjectiveMemoryTransformer(nn.Module, GenerationMixin):
 				if labels is not None:
 					shift_labels = labels[..., (c*self.tokenized_length)+1:(c+1)*(self.tokenized_length)].contiguous()
 				# only take loss of non-fully-masked blocks
-				if torch.all(shift_labels == -100):
-		 			continue
-				loss = self.cel(shift_logits, shift_labels)
-				if not torch.isnan(loss):
-					total_loss += loss
-			if total_loss == 0:
-				total_loss = loss # if no chunks are valid
+					if torch.all(shift_labels == -100):
+		 				continue
+					loss = self.cel(shift_logits, shift_labels)
+					if not torch.isnan(loss):
+						total_loss += loss
 
 		mean_loss = total_loss / self.chunks
 		all_outputs = torch.cat(all_outputs, dim=2) # concat in token dim
-		truncated_logits = all_outputs[:, :input_length, :] # truncate logits (for padded inputs)
 		if labels is not None:
 			loss = 0
 		else:
 			loss = mean_loss
-		CausalLMOutput(loss=loss, logits=truncated_logits)
+		return CausalLMOutput(loss=loss, logits=all_outputs)

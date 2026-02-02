@@ -1292,9 +1292,9 @@ class HyenaHFLM(TemplateLM):
             attn_masks = attn_masks.to(self.device)
             # truncate input if necessary
             context_enc, attn_masks = context_enc[:, -980:], attn_masks[:, -980:]
-            print(context_enc.shape, self.max_length)
-            print (context_enc)
-            print (f'\n\n Decoded input: {self.tokenizer.decode(context_enc[0])}')
+            #print(context_enc.shape, self.max_length)
+            #print (context_enc)
+            #print (f'\n\n Decoded input: {self.tokenizer.decode(context_enc[0])}')
             kwargs["max_length"] = 1024
             # perform batched generation
             cont = self._model_generate(

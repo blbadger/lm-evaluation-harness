@@ -260,6 +260,7 @@ class MLPMixer(nn.Module, GenerationMixin):
 
 	def forward(self, input_ids, labels=None, **kwargs):
 		#print (input_ids.shape)
+		input_ids = input_ids[:, -self.max_length:]
 		input_length = input_ids.shape[1]
 		pad_size = self.seq_len - input_ids.shape[1]
 		pad_tokens = torch.ones(input_ids.shape[0], pad_size, dtype=torch.long).to(input_ids.device)

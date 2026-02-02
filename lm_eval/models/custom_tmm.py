@@ -120,11 +120,11 @@ class TMMHFLM(TemplateLM):
         self.compute_datatype = torch.bfloat16 if torch.cuda.get_device_capability()[0] >= 8 else torch.float16
         self.dim = 1024
         self.depth = 16
-        self.length = 512
+        self.length = 1024
         self.heads = None
         self.kernel = 1
         self._max_length = self.length
-        self.max_gen_length = 512
+        self.max_gen_length = self.length
         # optionally: take in an already-initialized transformers.PreTrainedModel
         if not isinstance(pretrained, str):
             eval_logger.warning(
@@ -1292,11 +1292,11 @@ class TMMHFLM(TemplateLM):
             context_enc = context_enc.to(self.device)
             attn_masks = attn_masks.to(self.device)
             # truncate input if necessary
-            context_enc, attn_masks = context_enc[:, -300:], attn_masks[:, -300:]
-            # print(context_enc.shape, self.max_length)
-            #print (context_enc)
-            #print (f'\n\n Decoded input: {self.tokenizer.decode(context_enc[0])}')
-            kwargs["max_length"] = 512
+            context_enc, attn_masks = context_enc[:, -980:], attn_masks[:, -980:]
+            print (context_enc.shape, self.max_length)
+            print (context_enc)
+            print (f'\n\n Decoded input: {self.tokenizer.decode(context_enc[0])}')
+            kwargs["max_length"] = 1024
             # perform batched generation
             cont = self._model_generate(
                 context=context_enc,

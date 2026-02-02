@@ -1459,7 +1459,7 @@ class HFLM(TemplateLM):
             if "max_length" not in kwargs:
                 kwargs["max_length"] = context_enc.shape[1] + max_gen_toks
             context_enc, attn_masks = context_enc[:, -980:], attn_masks[:, -980:]
-            #print (context_enc, kwargs['max_length'])
+            #print (context_enc, attn_masks, kwargs['max_length'])
             #print (f'Decoded input: {self.tokenizer.decode(context_enc[0])}')
             # perform batched generation
             cont = self._model_generate(

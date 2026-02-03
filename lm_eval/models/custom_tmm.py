@@ -278,7 +278,6 @@ class TMMHFLM(TemplateLM):
 
         self.add_bos_token = add_bos_token
 
-        self._max_length = max_length
         self.pretrained = pretrained
         self.delta = delta
         self.peft = peft

@@ -278,7 +278,6 @@ class MemtransHFLM(TemplateLM):
 
         self.add_bos_token = add_bos_token
 
-        self._max_length = max_length
         self.pretrained = pretrained
         self.delta = delta
         self.peft = peft
@@ -651,7 +650,7 @@ class MemtransHFLM(TemplateLM):
         subfolder: str | None = "",
     ) -> None:
         #TODO: padding seems to occur using 0 (bos token), check if this is intended
-        self.tokenizer = AutoTokenizer.from_pretrained(self.data_root + '/tokenizer_fineweb_8k_servbadge')
+        self.tokenizer = AutoTokenizer.from_pretrained(self.data_root + '/tokenizer_fineweb_8k')
         self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
 
     def _detect_batch_size(self, requests: Sequence | None = None, pos: int = 0):
@@ -1194,7 +1193,6 @@ class MemtransHFLM(TemplateLM):
                     logits = torch.gather(logits, 2, cont_toks.unsqueeze(-1)).squeeze(
                         -1
                     )  # [1, seq]
-
                     # Answer: (log prob, is-exact-match)
                     answer = (float(logits.sum()), bool(max_equal))
 
@@ -1290,6 +1288,7 @@ class MemtransHFLM(TemplateLM):
             if self.backend == "causal":
                 # max len for inputs = max length, minus room to generate the max new tokens
                 max_ctx_len = self.max_length - max_gen_toks
+                max_ctx_len=1024
                 assert max_ctx_len > 0, (
                     f"Invalid configuration: requested max tokens to generate ({max_gen_toks}) must be less than model's maximum sequence length ({self.max_length})."
                 )
@@ -1306,16 +1305,18 @@ class MemtransHFLM(TemplateLM):
             context_enc = context_enc.to(self.device)
             attn_masks = attn_masks.to(self.device)
             # truncate input if necessary
-            context_enc, attn_masks = context_enc[:, -300:], attn_masks[:, -300:]
+            #context_enc, attn_masks = context_enc[:, -300:], attn_masks[:, -300:]
             # print(context_enc.shape, self.max_length)
             #print (context_enc)
             #print (f'\n\n Decoded input: {self.tokenizer.decode(context_enc[0])}')
-            kwargs["max_length"] = 512
+            kwargs["max_length"] = self._max_length
+            max_new_tokens = min(max_gen_toks, 128)
             # perform batched generation
             cont = self._model_generate(
                 context=context_enc,
                 attention_mask=attn_masks,
                 stop=until,
+		max_new_tokens=max_new_tokens,
                 **kwargs,
             )
 

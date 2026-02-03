@@ -165,7 +165,7 @@ class ObjectiveMemoryTransformer(nn.Module, GenerationMixin):
 			 }
 		self.config = LlamaConfig(**config)
 		self.main_input_name = 'input_ids'
-		max_input_length = 2048
+		max_input_length = 1024
 		generation_config_args = {'max_length': max_input_length}
 		self.max_length = length
 		self._supports_cache_class = False
@@ -179,9 +179,9 @@ class ObjectiveMemoryTransformer(nn.Module, GenerationMixin):
 		return False
 
 	def forward(self, input_ids, labels=None, attention_mask=None, **kwargs):
+		device = self.wte.weight.device
 		input_ids = input_ids.to(device)
 		all_inputs = [[input_ids, labels]]
-		
 		total_loss = 0
 		for input_ids, labels in all_inputs:
 			# generate encoder embeddings
@@ -193,8 +193,9 @@ class ObjectiveMemoryTransformer(nn.Module, GenerationMixin):
 				embedding_array = [torch.ones((input_ids.shape[0], 1, self.decoder_dim)).to(device) for _ in range(self.chunks)]
 
 			while input_ids.shape[1] - self.tokenized_length > i:
-				input_chunk, attention_chunk = self.wte(input_ids[:, i: i+self.tokenized_length]), attention_mask[:, i: i+self.tokenized_length]
-				
+				input_chunk, attention_chunk = self.wte(input_ids[:, i: i+self.tokenized_length]), None
+				if attention_mask:
+					attention_chunk = attention_mask[:, i: i+self.tokenized_length]	
 				x = self.encoder(inputs_embeds=input_chunk, attention_mask=attention_chunk)
 				if not torch.is_tensor(x):
 					x = x.last_hidden_state
@@ -251,4 +252,5 @@ class ObjectiveMemoryTransformer(nn.Module, GenerationMixin):
 			loss = 0
 		else:
 			loss = mean_loss
+		all_outputs = rearrange(all_outputs, 'b e t -> b t e')
 		return CausalLMOutput(loss=loss, logits=all_outputs)

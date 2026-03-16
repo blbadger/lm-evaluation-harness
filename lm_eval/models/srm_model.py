@@ -8,8 +8,6 @@ from transformers.modeling_outputs import CausalLMOutput
 from transformers.generation import GenerationMixin, GenerationConfig
 import datasets
 from datasets import load_from_disk
-import mlflow
-from prettytable import PrettyTable
 import os
 from dotenv import load_dotenv
 import shutil

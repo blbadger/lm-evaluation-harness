@@ -636,7 +636,7 @@ class SRMHFLM(TemplateLM):
         subfolder: str | None = "",
     ) -> None:
         #TODO: padding seems to occur using 0 (bos token), check if this is intended
-        self.tokenizer = AutoTokenizer.from_pretrained(self.data_root + '/tokenizer_fineweb_8k_servbadge')
+        self.tokenizer = AutoTokenizer.from_pretrained(self.data_root + '/tokenizer_fineweb_8k')# NB: servbadge 8k tokenizer
         self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
 
     def _detect_batch_size(self, requests: Sequence | None = None, pos: int = 0):

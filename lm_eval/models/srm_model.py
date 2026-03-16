@@ -3,6 +3,9 @@ import torch.nn as nn
 from einops import rearrange
 import transformers
 from transformers import AutoTokenizer
+from transformers import AutoTokenizer, LlamaConfig
+from transformers.modeling_outputs import CausalLMOutput
+from transformers.generation import GenerationMixin, GenerationConfig
 import datasets
 from datasets import load_from_disk
 import mlflow
@@ -615,7 +618,7 @@ class MLPMixer(nn.Module, GenerationMixin):
         self.output_layer = nn.Linear(hidden_dim, vocab_size, bias=False, device='cuda')
         self._init_weights()
         self.loss_fn = nn.CrossEntropyLoss()
-        self.generation_config = GenerationConfig()
+
         config  = {
                  'hidden_size': hidden_dim,
                  'intermediate_size': 4*hidden_dim,
@@ -625,7 +628,7 @@ class MLPMixer(nn.Module, GenerationMixin):
              }
         self.config = LlamaConfig(**config)
         self.main_input_name = 'input_ids'
-        max_input_length = 2048
+        max_input_length = 1024
         generation_config_args = {'max_length': max_input_length}
         self.generation_config = GenerationConfig(**generation_config_args)
         self.max_length = 1024

@@ -616,7 +616,22 @@ class SRMHFLM(TemplateLM):
 
         model_path = pretrained
         n_vocab = self.tokenizer.vocab_size # 8000
-        model = MLPMixer(self.n_vocab, self.dim, self.max_length, self.depth, heads=self.heads, kernel=self.kernel, expanded_convs=False)
+        model = MLPMixer(
+            self.n_vocab, 
+            self.dim, 
+            self.max_length, 
+            self.depth, 
+            heads=self.heads, 
+            kernel=self.kernel, 
+            expanded_convs=False, 
+            copy=False, 
+            mixed_heads=True, 
+            combined_heads=False, 
+            decay=True,
+            parallel_heads=False, 
+            use_projections=True
+        )
+    
         safetensors.torch.load_model(model, model_path)
         self._model = torch.compile(model.to(self.compute_datatype))
         return

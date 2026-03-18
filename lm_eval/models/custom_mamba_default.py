@@ -26,7 +26,7 @@ from transformers.models.auto.modeling_auto import (
     MODEL_FOR_CAUSAL_LM_MAPPING_NAMES,
     MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING_NAMES,
 )
-from transformers import AutoTokenizer, LlamaConfig
+from transformers import AutoTokenizer, LlamaConfig, Mamba2ForCausalLM
 
 from lm_eval import utils
 from lm_eval.api.model import TemplateLM
@@ -43,7 +43,7 @@ from lm_eval.models.utils import (
     postprocess_generated_text,
     stop_sequences_criteria,
 )
-from lm_eval.models.srm_model import MLPMixer
+
 import safetensors
 
 import os
@@ -58,8 +58,8 @@ eval_logger = logging.getLogger(__name__)
 TOKENIZER_INFINITY = 1000000000000000019884624838656
 
 
-@register_model("srm")
-class SRMHFLM(TemplateLM):
+@register_model("mamba2")
+class Mamba2HFLM(TemplateLM):
     """An abstracted Huggingface model class. Enables usage with both models of
     `transformers.AutoModelForCausalLM` and `transformers.AutoModelForSeq2SeqLM` classes.
 
@@ -118,11 +118,18 @@ class SRMHFLM(TemplateLM):
         self.checkpoint_root = os.getenv('CHECKPOINT_ROOT')
         self.data_root = os.getenv('DATA_ROOT')
         self.compute_datatype = torch.bfloat16 if torch.cuda.get_device_capability()[0] >= 8 else torch.float16
-        self.dim = 1024
-        self.depth = 16
-        self.length = 1024
-        self.heads = None
-        self.kernel = 1
+        dim = 1024
+        context_length = 1024
+        n_layers = 16
+        state_size = dim//2
+        num_heads = 8
+        head_dim = dim//4
+        self.dim = dim
+        self.context_length = context_length
+        self.n_layers = n_layers
+        self.state_size = state_size
+        self.num_heads = num_heads
+        self.head_dim = head_dim
         self._max_length = self.length
         self.max_gen_length = self.length
         # optionally: take in an already-initialized transformers.PreTrainedModel
@@ -616,22 +623,24 @@ class SRMHFLM(TemplateLM):
 
         model_path = pretrained
         n_vocab = self.tokenizer.vocab_size # 8000
-        model = MLPMixer(
-            self.n_vocab, 
-            self.dim, 
-            self.max_length, 
-            self.depth, 
-            heads=self.heads, 
-            kernel=self.kernel, 
-            expanded_convs=False, 
-            copy=False, 
-            mixed_heads=True, 
-            combined_heads=False, 
-            decay=True,
-            parallel_heads=False, 
-            use_projections=True
-        )
-    
+
+        config_kwargs = {
+            'hidden_size': self.dim,
+            'intermediate_size': 4*self.dim,
+            'num_hidden_layers': self.n_layers,
+            'num_attention_heads': self.num_heads,
+            'vocab_size': n_vocab,
+            'state_size': self.state_size,
+            'hidden_dropout_prob': 0,
+            'pad_token_id': tokenizer.pad_token_id,
+            'eos_token_id': tokenizer.eos_token_id,
+            'chunk_size': self.context_length,
+            'num_heads': self.num_heads,
+            'head_dim': self.head_dim
+        }
+
+        config = Mamba2Config(**config_kwargs)
+        model = Mamba2ForCausalLM(config)
         safetensors.torch.load_model(model, model_path)
         self._model = torch.compile(model.to(self.compute_datatype))
         return
@@ -651,7 +660,7 @@ class SRMHFLM(TemplateLM):
         subfolder: str | None = "",
     ) -> None:
         #TODO: padding seems to occur using 0 (bos token), check if this is intended
-        self.tokenizer = AutoTokenizer.from_pretrained(self.data_root + '/tokenizer_fineweb_8k')# NB: servbadge 8k tokenizer
+        self.tokenizer = AutoTokenizer.from_pretrained(self.data_root + '/tokenizer_fineweb_8k_servbadge')
         self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
 
     def _detect_batch_size(self, requests: Sequence | None = None, pos: int = 0):
@@ -1309,7 +1318,7 @@ class SRMHFLM(TemplateLM):
             context_enc, attn_masks = context_enc[:, -980:], attn_masks[:, -980:]
             print (context_enc.shape, self.max_length)
             print (context_enc)
-            # print (f'\n\n Decoded input: {self.tokenizer.decode(context_enc[0])}')
+            print (f'\n\n Decoded input: {self.tokenizer.decode(context_enc[0])}')
             kwargs["max_length"] = 1024
             # perform batched generation
             cont = self._model_generate(

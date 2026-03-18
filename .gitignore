@@ -8,6 +8,8 @@ ENV/
 env/
 *.env
 eval-venv
+vllm-venv
+*venv
 
 # Python bytecode and build artifacts
 __pycache__/

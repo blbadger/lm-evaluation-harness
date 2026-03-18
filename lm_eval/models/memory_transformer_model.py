@@ -194,7 +194,7 @@ class ObjectiveMemoryTransformer(nn.Module, GenerationMixin):
 
 			while input_ids.shape[1] - self.tokenized_length > i:
 				input_chunk, attention_chunk = self.wte(input_ids[:, i: i+self.tokenized_length]), None
-				if attention_mask:
+				if attention_mask is not None:
 					attention_chunk = attention_mask[:, i: i+self.tokenized_length]	
 				x = self.encoder(inputs_embeds=input_chunk, attention_mask=attention_chunk)
 				if not torch.is_tensor(x):

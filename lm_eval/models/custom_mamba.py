@@ -26,7 +26,7 @@ from transformers.models.auto.modeling_auto import (
     MODEL_FOR_CAUSAL_LM_MAPPING_NAMES,
     MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING_NAMES,
 )
-from transformers import AutoTokenizer, LlamaConfig
+from transformers import AutoTokenizer, Mamba2Config, Mamba2Model, LlamaConfig
 
 from lm_eval import utils
 from lm_eval.api.model import TemplateLM
@@ -118,7 +118,7 @@ class MambaHFLM(TemplateLM):
         self.checkpoint_root = os.getenv('CHECKPOINT_ROOT')
         self.data_root = os.getenv('DATA_ROOT')
         self.compute_datatype = torch.bfloat16 if torch.cuda.get_device_capability()[0] >= 8 else torch.float16
-        dim = 1024
+        dim = 256
         context_length = 1024
         n_layers = 16
         state_size = dim//2
@@ -130,6 +130,7 @@ class MambaHFLM(TemplateLM):
         self.state_size = state_size
         self.num_heads = num_heads
         self.head_dim = head_dim
+        self.length = context_length
         self._max_length = self.length
         self.max_gen_length = self.length
         # optionally: take in an already-initialized transformers.PreTrainedModel
@@ -629,11 +630,11 @@ class MambaHFLM(TemplateLM):
             'intermediate_size': 4*self.dim,
             'num_hidden_layers': self.n_layers,
             'num_attention_heads': self.num_heads,
-            'vocab_size': n_vocab,
+            'vocab_size': self.n_vocab,
             'state_size': self.state_size,
             'hidden_dropout_prob': 0,
-            'pad_token_id': tokenizer.pad_token_id,
-            'eos_token_id': tokenizer.eos_token_id,
+            'pad_token_id': self.tokenizer.pad_token_id,
+            'eos_token_id': self.tokenizer.eos_token_id,
             'chunk_size': self.context_length,
             'num_heads': self.num_heads,
             'head_dim': self.head_dim
@@ -641,9 +642,11 @@ class MambaHFLM(TemplateLM):
 
         config = Mamba2Config(**config_kwargs)
         model = Mamba2Model(config)
-        model = MambaCLM(self.n_vocab, self.dim, self.max_length, self.depth, heads=self.heads, kernel=self.kernel, expanded_convs=False)
+        model = MambaCLM(model, self.dim, self.n_vocab, self.n_layers, self.num_heads, self.context_length, self.state_size, self.head_dim, self.tokenizer)
+        #self, model, dim, vocab_size, n_layers, num_heads, context_length, state_size, head_dim 
         safetensors.torch.load_model(model, model_path)
-        self._model = torch.compile(model.to(self.compute_datatype))
+        self._model = torch.compile(model.to(self.compute_datatype)).to(self.device)
+        print (f'compiled model with {self.compute_datatype} dtype')
         return
 
     def _create_tokenizer(
@@ -1292,7 +1295,7 @@ class MambaHFLM(TemplateLM):
                     f"Expected `kwargs` to be of type `dict` but got {type(gen_kwargs)}"
                 )
             if "max_gen_toks" in kwargs:
-                max_gen_toks = kwargs.pop("max_gen_toks")
+                max_gen_toks = min(512, kwargs.pop("max_gen_toks")) # TODO: only max gen toks
             else:
                 max_gen_toks = self.max_gen_toks
 

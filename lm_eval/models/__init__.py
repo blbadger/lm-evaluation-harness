@@ -40,6 +40,7 @@ MODEL_MAPPING = {
     "local-completions": "lm_eval.models.openai_completions:LocalCompletionsAPI",
     "mamba_ssm": "lm_eval.models.mamba_lm:MambaLMWrapper",
     "mamba-clm": "lm_eval.models.custom_mamba:MambaHFLM",
+    "mamba-default": "lm_eval.models.custom_mamba_default:Mamba2HFLM",
     "memtrans": "lm_eval.models.custom_memtrans:MemtransHFLM",
     "nemo_lm": "lm_eval.models.nemo_lm:NeMoLM",
     "neuronx": "lm_eval.models.neuron_optimum:NeuronModelForCausalLM",

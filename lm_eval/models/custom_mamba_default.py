@@ -26,7 +26,7 @@ from transformers.models.auto.modeling_auto import (
     MODEL_FOR_CAUSAL_LM_MAPPING_NAMES,
     MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING_NAMES,
 )
-from transformers import AutoTokenizer, LlamaConfig, Mamba2ForCausalLM
+from transformers import AutoTokenizer, LlamaConfig, Mamba2Config, Mamba2ForCausalLM
 
 from lm_eval import utils
 from lm_eval.api.model import TemplateLM
@@ -118,12 +118,13 @@ class Mamba2HFLM(TemplateLM):
         self.checkpoint_root = os.getenv('CHECKPOINT_ROOT')
         self.data_root = os.getenv('DATA_ROOT')
         self.compute_datatype = torch.bfloat16 if torch.cuda.get_device_capability()[0] >= 8 else torch.float16
-        dim = 1024
+        dim = 256
         context_length = 1024
         n_layers = 16
         state_size = dim//2
         num_heads = 8
         head_dim = dim//4
+        self.length = context_length
         self.dim = dim
         self.context_length = context_length
         self.n_layers = n_layers
@@ -632,8 +633,8 @@ class Mamba2HFLM(TemplateLM):
             'vocab_size': n_vocab,
             'state_size': self.state_size,
             'hidden_dropout_prob': 0,
-            'pad_token_id': tokenizer.pad_token_id,
-            'eos_token_id': tokenizer.eos_token_id,
+            'pad_token_id': self.tokenizer.pad_token_id,
+            'eos_token_id': self.tokenizer.eos_token_id,
             'chunk_size': self.context_length,
             'num_heads': self.num_heads,
             'head_dim': self.head_dim
@@ -642,7 +643,7 @@ class Mamba2HFLM(TemplateLM):
         config = Mamba2Config(**config_kwargs)
         model = Mamba2ForCausalLM(config)
         safetensors.torch.load_model(model, model_path)
-        self._model = torch.compile(model.to(self.compute_datatype))
+        self._model = torch.compile(model.to(self.compute_datatype)).to(self.device)
         return
 
     def _create_tokenizer(
@@ -857,7 +858,7 @@ class Mamba2HFLM(TemplateLM):
                 max_length=max_length,
                 stopping_criteria=stopping_criteria,
                 pad_token_id=self.tokenizer.pad_token_id,
-                use_cache=True,
+                use_cache=True, 
                 **generation_kwargs,
             )
 

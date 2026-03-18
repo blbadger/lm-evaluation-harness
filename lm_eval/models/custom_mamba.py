@@ -664,7 +664,7 @@ class MambaHFLM(TemplateLM):
         subfolder: str | None = "",
     ) -> None:
         #TODO: padding seems to occur using 0 (bos token), check if this is intended
-        self.tokenizer = AutoTokenizer.from_pretrained(self.data_root + '/tokenizer_fineweb_8k_servbadge')
+        self.tokenizer = AutoTokenizer.from_pretrained(self.data_root + '/tokenizer_fineweb_8k')
         self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
 
     def _detect_batch_size(self, requests: Sequence | None = None, pos: int = 0):
@@ -915,7 +915,7 @@ class MambaHFLM(TemplateLM):
                     utils.get_rolling_token_windows(
                         token_list=self.tok_encode(string),
                         prefix_token=self.prefix_token_id,
-                        max_seq_len=self.max_length,
+                        max_seq_len=self.max_length, #self.max_length,TAG
                         context_len=1,
                     ),
                 )

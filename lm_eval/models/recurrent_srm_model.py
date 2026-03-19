@@ -461,6 +461,8 @@ class RecurrentMixer(RecurrentMLPMixer, GenerationMixin):
         self.cache_built = False
         self.device = self.output_layer.weight.device
 
+        self.counter = 0
+
     def can_generate(self):
         return True
 
@@ -484,7 +486,6 @@ class RecurrentMixer(RecurrentMLPMixer, GenerationMixin):
                 block.token_mixing_layer.mixer_heads[h].cache = torch.zeros(self.hidden_dim//self.n_heads).to('cuda') # only for mixed heads
 
     def forward(self, input_ids, labels=None, **kwargs):
-        print ('forward pass started')
         if not self.cache_built:
             self.build_cache(input_ids)
             print ('Cache built')
@@ -496,7 +497,8 @@ class RecurrentMixer(RecurrentMLPMixer, GenerationMixin):
         for block in self.mixer_blocks:
             x = block(x, index)
         logits = self.output_layer(x).unsqueeze(1)
-        print ('forward pass complete')
+        print (f'{self.counter} forward pass complete')
+        self.counter += 1
         if labels is not None:
             return CausalLMOutput(loss=0, logits=logits)
         else:

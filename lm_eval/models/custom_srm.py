@@ -1288,7 +1288,7 @@ class SRMHFLM(TemplateLM):
                     f"Expected `kwargs` to be of type `dict` but got {type(gen_kwargs)}"
                 )
             if "max_gen_toks" in kwargs:
-                max_gen_toks = min(512, kwargs.pop("max_gen_toks")) # TODO: swap back 
+                max_gen_toks = min(256, kwargs.pop("max_gen_toks")) # TODO: swap back 
             else:
                 max_gen_toks = self.max_gen_toks
 

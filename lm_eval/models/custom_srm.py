@@ -845,7 +845,7 @@ class SRMHFLM(TemplateLM):
             self.tokenizer, stop, context.shape[1], context.shape[0]
         )
         
-        generation_kwargs['attention_mask'] = None
+        del generation_kwargs['attention_mask']
         print (dict(generation_kwargs))
         with torch.autocast(
             device_type=self.device.type,

@@ -29,8 +29,8 @@ generation_kwargs:
   do_sample: true
   temperature: 0.7
   top_p: 0.9
-repeats: 5
-num_fewshot: 1
+repeats: 50
+num_fewshot: 3
 filter_list:
   - name: "pass@1"
     filter:
@@ -46,6 +46,53 @@ filter_list:
       regex_pattern: "(-?[$0-9.,]{2,})|(-?[0-9]+)"
     - function: "take_first_k"
       k: 5
+  - name: "pass@10"
+    filter:
+    - function: "regex"
+      group_select: -1
+      regex_pattern: "(-?[$0-9.,]{2,})|(-?[0-9]+)"
+    - function: "take_first_k"
+      k: 10
+
+  - name: "pass@20"
+    filter:
+    - function: "regex"
+      group_select: -1
+      regex_pattern: "(-?[$0-9.,]{2,})|(-?[0-9]+)"
+    - function: "take_first_k"
+      k: 20
+
+  - name: "pass@25"
+    filter:
+    - function: "regex"
+      group_select: -1
+      regex_pattern: "(-?[$0-9.,]{2,})|(-?[0-9]+)"
+    - function: "take_first_k"
+      k: 25
+
+  - name: "pass@30"
+    filter:
+    - function: "regex"
+      group_select: -1
+      regex_pattern: "(-?[$0-9.,]{2,})|(-?[0-9]+)"
+    - function: "take_first_k"
+      k: 30
+
+  - name: "pass@40"
+    filter:
+    - function: "regex"
+      group_select: -1
+      regex_pattern: "(-?[$0-9.,]{2,})|(-?[0-9]+)"
+    - function: "take_first_k"
+      k: 40
+
+  - name: "pass@50"
+    filter:
+    - function: "regex"
+      group_select: -1
+      regex_pattern: "(-?[$0-9.,]{2,})|(-?[0-9]+)"
+    - function: "take_first_k"
+      k: 50
 
 process_results: !function util.process_results
 metadata:

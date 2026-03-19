@@ -844,20 +844,22 @@ class SRMHFLM(TemplateLM):
         stopping_criteria = stop_sequences_criteria(
             self.tokenizer, stop, context.shape[1], context.shape[0]
         )
+        
+        generation_kwargs['attention_mask'] = None
         print (dict(generation_kwargs))
-        # with torch.autocast(
-        #     device_type=self.device.type,
-        #     dtype=self.mixed_precision_dtype,
-        #     enabled=self.mixed_precision_dtype is not None,
-        # ):
-        return self.model.generate(
-            input_ids=context,
-            max_length=max_length,
-            stopping_criteria=stopping_criteria,
-            pad_token_id=self.tokenizer.pad_token_id,
-            use_cache=True,
-            **generation_kwargs,
-        )
+        with torch.autocast(
+            device_type=self.device.type,
+            dtype=self.mixed_precision_dtype,
+            enabled=self.mixed_precision_dtype is not None,
+        ):
+            return self.model.generate(
+                input_ids=context,
+                max_length=max_length,
+                stopping_criteria=stopping_criteria,
+                pad_token_id=self.tokenizer.pad_token_id,
+                use_cache=True,
+                **generation_kwargs,
+            )
 
     def _select_cont_toks(
         self,

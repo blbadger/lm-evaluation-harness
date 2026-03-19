@@ -44,6 +44,7 @@ from lm_eval.models.utils import (
     stop_sequences_criteria,
 )
 from lm_eval.models.srm_model import MLPMixer
+from lm_eval.models.recurrent_srm_model import RecurrentMixer
 import safetensors
 
 import os
@@ -118,6 +119,7 @@ class SRMHFLM(TemplateLM):
         self.checkpoint_root = os.getenv('CHECKPOINT_ROOT')
         self.data_root = os.getenv('DATA_ROOT')
         self.compute_datatype = torch.bfloat16 if torch.cuda.get_device_capability()[0] >= 8 else torch.float16
+        self.use_recurrent = True
         self.dim = 1024
         self.depth = 16
         self.length = 1024
@@ -616,20 +618,22 @@ class SRMHFLM(TemplateLM):
 
         model_path = pretrained
         n_vocab = self.tokenizer.vocab_size # 8000
-        model = MLPMixer(
-            self.n_vocab, 
-            self.dim, 
-            self.max_length, 
-            self.depth, 
-            heads=self.heads, 
-            kernel=self.kernel, 
-            expanded_convs=False, 
-            mixed_heads=True, 
-            combined_heads=False, 
-            decay=True,
-            parallel_heads=False, 
-            use_projections=True
-        )
+
+        model_args = (self.n_vocab, self.dim, self.max_length, self.depth)
+        model_kwargs = {
+                'heads': self.heads, 
+                'kernel': self.kernel, 
+                'expanded_convs': False, 
+                'mixed_heads': True, 
+                'combined_heads': False, 
+                'decay': True,
+                'parallel_heads': False, 
+                'use_projections': True
+            }
+        if self.use_recurrent:
+            model = RecurrentMixer(*model_args, **model_kwargs)
+        else:
+            model = MLPMixer(*model_args, **model_kwargs)
     
         safetensors.torch.load_model(model, model_path)
         self._model = torch.compile(model.to(self.compute_datatype)).to(self.device)

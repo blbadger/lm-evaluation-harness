@@ -854,7 +854,7 @@ class SRMHFLM(TemplateLM):
                 max_length=max_length,
                 stopping_criteria=stopping_criteria,
                 pad_token_id=self.tokenizer.pad_token_id,
-                use_cache=True,
+                # use_cache=True,
                 **generation_kwargs,
             )
 
@@ -1317,6 +1317,7 @@ class SRMHFLM(TemplateLM):
             #print (context_enc)
             #print (f'\n\n Decoded input: {self.tokenizer.decode(context_enc[0])}')
             kwargs["max_length"] = 1024
+            kwargs["max_new_tokens"] = 256 # for GSM8k
             # perform batched generation
             cont = self._model_generate(
                 context=context_enc,

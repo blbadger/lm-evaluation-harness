@@ -225,7 +225,7 @@ class MixedRepeatHeads(nn.Module):
             activations.append(conv_projection)
 
         # concatenate and project multi-headed output
-        hidden_layer = torch.cat(activations, dim=1)
+        hidden_layer = torch.cat(activations, dim=1).to(x.dtype)
         if self.use_projections:
             hidden_layer = self.out_proj(hidden_layer)
 

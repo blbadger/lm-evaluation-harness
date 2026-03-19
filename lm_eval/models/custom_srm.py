@@ -1321,12 +1321,14 @@ class SRMHFLM(TemplateLM):
             kwargs["max_length"] = 1024
             kwargs["max_new_tokens"] = 256 # for GSM8k
             # perform batched generation
-            cont = self._model_generate(
-                context=context_enc,
-                attention_mask=attn_masks,
-                stop=until,
-                **kwargs,
-            )
+            self.model.generate(context_enc, max_new_tokens=256, do_sample=True, top_p=0.9, temperature=0.7)
+            print ('\nGeneration Complete')
+            # cont = self._model_generate(
+            #     context=context_enc,
+            #     attention_mask=attn_masks,
+            #     stop=until,
+            #     **kwargs,
+            # )
             print ('\nGeneration Complete')
             cont_toks_list = cont.tolist()
             for cont_toks, context in zip(cont_toks_list, contexts):

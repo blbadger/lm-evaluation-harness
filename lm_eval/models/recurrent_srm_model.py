@@ -476,6 +476,11 @@ class RecurrentMixer(RecurrentMLPMixer, GenerationMixin):
         self.cache_built = True
         return
 
+    def clear_cache(self):
+        for block in self.mixer_blocks:
+            for h in range(len(block.token_mixing_layer.mixer_heads)):
+                block.token_mixing_layer.mixer_heads[h].cache = torch.zeros(embedding_dim).to('cuda')
+
     def forward(self, input_ids, labels=None, **kwargs):
         if not self.cache_built:
             self.build_cache(input_ids)

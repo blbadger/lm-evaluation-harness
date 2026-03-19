@@ -1,7 +1,6 @@
 tag:
   - math_word_problems
 task: gsm8k_pass
-task: gsm8k_pass
 dataset_path: gsm8k
 dataset_name: main
 output_type: generate_until

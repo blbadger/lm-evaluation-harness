@@ -460,7 +460,6 @@ class RecurrentMixer(RecurrentMLPMixer, GenerationMixin):
         self._supports_cache_class = False
         self.cache_built = False
         self.device = self.output_layer.weight.device
-
         self.counter = 0
 
     def can_generate(self):
@@ -497,8 +496,6 @@ class RecurrentMixer(RecurrentMLPMixer, GenerationMixin):
         for block in self.mixer_blocks:
             x = block(x, index)
         logits = self.output_layer(x).unsqueeze(1)
-        print (f'{self.counter} forward pass complete')
-        self.counter += 1
         if labels is not None:
             return CausalLMOutput(loss=0, logits=logits)
         else:

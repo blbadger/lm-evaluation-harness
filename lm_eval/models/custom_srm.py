@@ -121,7 +121,7 @@ class SRMHFLM(TemplateLM):
         self.dim = 1024
         self.depth = 16
         self.length = 1024
-        self.heads = None
+        self.heads = 4
         self.kernel = 1
         self._max_length = self.length
         self.max_gen_length = self.length
@@ -624,7 +624,6 @@ class SRMHFLM(TemplateLM):
             heads=self.heads, 
             kernel=self.kernel, 
             expanded_convs=False, 
-            copy=False, 
             mixed_heads=True, 
             combined_heads=False, 
             decay=True,
@@ -633,7 +632,7 @@ class SRMHFLM(TemplateLM):
         )
     
         safetensors.torch.load_model(model, model_path)
-        self._model = torch.compile(model.to(self.compute_datatype))
+        self._model = torch.compile(model.to(self.compute_datatype)).to(self.device)
         return
 
     def _create_tokenizer(
@@ -1282,7 +1281,7 @@ class SRMHFLM(TemplateLM):
                     f"Expected `kwargs` to be of type `dict` but got {type(gen_kwargs)}"
                 )
             if "max_gen_toks" in kwargs:
-                max_gen_toks = kwargs.pop("max_gen_toks")
+                max_gen_toks = min(512, kwargs.pop("max_gen_toks")) # TODO: swap back 
             else:
                 max_gen_toks = self.max_gen_toks
 
@@ -1306,10 +1305,10 @@ class SRMHFLM(TemplateLM):
             context_enc = context_enc.to(self.device)
             attn_masks = attn_masks.to(self.device)
             # truncate input if necessary
-            context_enc, attn_masks = context_enc[:, -980:], attn_masks[:, -980:]
-            print (context_enc.shape, self.max_length)
-            print (context_enc)
-            # print (f'\n\n Decoded input: {self.tokenizer.decode(context_enc[0])}')
+            context_enc, attn_masks = context_enc[:, -980:], attn_masks[:, -980:] # -980:
+            #print (context_enc.shape, self.max_length)
+            #print (context_enc)
+            #print (f'\n\n Decoded input: {self.tokenizer.decode(context_enc[0])}')
             kwargs["max_length"] = 1024
             # perform batched generation
             cont = self._model_generate(

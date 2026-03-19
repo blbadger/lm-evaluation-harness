@@ -452,7 +452,7 @@ class RecurrentMixer(RecurrentMLPMixer, GenerationMixin):
                  'num_hidden_layers': num_blocks,
                  'num_attention_heads': 4,
                  'vocab_size': vocab_size
-             }
+                }
         self.config = LlamaConfig(**config)
         self.hidden_dim = hidden_dim
         self.n_heads = heads
@@ -484,8 +484,10 @@ class RecurrentMixer(RecurrentMLPMixer, GenerationMixin):
                 block.token_mixing_layer.mixer_heads[h].cache = torch.zeros(self.hidden_dim//self.n_heads).to('cuda') # only for mixed heads
 
     def forward(self, input_ids, labels=None, **kwargs):
+        print ('forward pass started')
         if not self.cache_built:
             self.build_cache(input_ids)
+            print ('Cache built')
         index = input_ids.shape[1] - 1
         input_ids = input_ids[:, -1] # last token only
         
@@ -494,6 +496,7 @@ class RecurrentMixer(RecurrentMLPMixer, GenerationMixin):
         for block in self.mixer_blocks:
             x = block(x, index)
         logits = self.output_layer(x).unsqueeze(1)
+        print ('forward pass complete')
         if labels is not None:
             return CausalLMOutput(loss=0, logits=logits)
         else:

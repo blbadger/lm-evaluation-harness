@@ -1,9 +1,9 @@
 def process_results(doc, results):
-    gold_label_set = doc["answers"]
+    gold_label = doc["answer"].split('#### ')[1]
     accuracy = 0.
-    prediction = doc["entities"]
-    for pred in prediction:
-        if pred == gold_label_set:
+    prediction = results
+    for pred in prediction[0]:
+        if pred.strip(' %$@!*,.') == gold_label:
             accuracy = 1.
             break
     return {

@@ -29,7 +29,7 @@ generation_kwargs:
   do_sample: true
   temperature: 0.7
   top_p: 0.9
-repeats: 2
+repeats: 50
 num_fewshot: 1
 filter_list:
   - name: "pass@10"
@@ -38,7 +38,15 @@ filter_list:
       group_select: -1
       regex_pattern: "(-?[$0-9.,]{2,})|(-?[0-9]+)"
     - function: "take_first_k"
-      k: 2
+      k: 10
+  - name: "pass@20"
+    filter:
+    - function: "regex"
+      group_select: -1
+      regex_pattern: "(-?[$0-9.,]{2,})|(-?[0-9]+)"
+    - function: "take_first_k"
+      k: 20
+
 process_results: !function util.process_results
 metadata:
   version: 2.0

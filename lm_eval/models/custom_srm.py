@@ -825,7 +825,8 @@ class SRMHFLM(TemplateLM):
         **generation_kwargs,
     ) -> torch.Tensor:
     
-        self.model.clear_cache()
+        if self.use_recurrent:
+                self.model.clear_cache()
         # temperature = 0.0 if not set
         # if do_sample is false and temp==0.0:
         # remove temperature, as do_sample=False takes care of this
@@ -1311,7 +1312,7 @@ class SRMHFLM(TemplateLM):
             context_enc = context_enc.to(self.device)
             attn_masks = attn_masks.to(self.device)
             # truncate input if necessary
-            context_enc, attn_masks = context_enc[:, -980:], attn_masks[:, -980:] # -980:
+            context_enc, attn_masks = context_enc[:, -900:], attn_masks[:, -900:] # -980:
             #print (context_enc.shape, self.max_length)
             #print (context_enc)
             #print (f'\n\n Decoded input: {self.tokenizer.decode(context_enc[0])}')
@@ -1323,7 +1324,7 @@ class SRMHFLM(TemplateLM):
                 stop=until,
                 **kwargs,
             )
-
+            print ('\nGeneration Complete')
             cont_toks_list = cont.tolist()
             for cont_toks, context in zip(cont_toks_list, contexts):
                 # discard context + left-padding toks if using causal decoder-only LM

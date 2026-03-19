@@ -454,6 +454,8 @@ class RecurrentMixer(RecurrentMLPMixer, GenerationMixin):
                  'vocab_size': vocab_size
              }
         self.config = LlamaConfig(**config)
+        self.hidden_dim = hidden_dim
+        self.n_heads = heads
         self.main_input_name = 'input_ids'
         self._supports_cache_class = False
         self.cache_built = False
@@ -479,7 +481,7 @@ class RecurrentMixer(RecurrentMLPMixer, GenerationMixin):
     def clear_cache(self):
         for block in self.mixer_blocks:
             for h in range(len(block.token_mixing_layer.mixer_heads)):
-                block.token_mixing_layer.mixer_heads[h].cache = torch.zeros(embedding_dim).to('cuda')
+                block.token_mixing_layer.mixer_heads[h].cache = torch.zeros(self.hidden_dim//self.n_heads).to('cuda') # only for mixed heads
 
     def forward(self, input_ids, labels=None, **kwargs):
         if not self.cache_built:

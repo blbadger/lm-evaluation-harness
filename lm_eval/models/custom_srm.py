@@ -827,7 +827,7 @@ class SRMHFLM(TemplateLM):
     
         if self.use_recurrent:
             self.model.clear_cache()
-            print (self.model.mixer_blocks[0].token_mixing_layer.mixer_heads[0].cache)
+            self.model.cache_build = False
 
         # temperature = 0.0 if not set
         # if do_sample is false and temp==0.0:

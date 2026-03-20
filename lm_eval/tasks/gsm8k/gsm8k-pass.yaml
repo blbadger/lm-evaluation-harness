@@ -29,7 +29,7 @@ generation_kwargs:
   do_sample: true
   temperature: 0.7
   top_p: 0.9
-repeats: 1000
+repeats: 10000
 num_fewshot: 3
 filter_list:
   - name: "pass@1"
@@ -149,6 +149,46 @@ filter_list:
       regex_pattern: "(-?[$0-9.,]{2,})|(-?[0-9]+)"
     - function: "take_first_k"
       k: 1000
+
+  - name: "pass@2000"
+    filter:
+    - function: "regex"
+      group_select: -1
+      regex_pattern: "(-?[$0-9.,]{2,})|(-?[0-9]+)"
+    - function: "take_first_k"
+      k: 2000
+
+  - name: "pass@3000"
+    filter:
+    - function: "regex"
+      group_select: -1
+      regex_pattern: "(-?[$0-9.,]{2,})|(-?[0-9]+)"
+    - function: "take_first_k"
+      k: 3000
+
+  - name: "pass@4000"
+    filter:
+    - function: "regex"
+      group_select: -1
+      regex_pattern: "(-?[$0-9.,]{2,})|(-?[0-9]+)"
+    - function: "take_first_k"
+      k: 4000
+
+  - name: "pass@5000"
+    filter:
+    - function: "regex"
+      group_select: -1
+      regex_pattern: "(-?[$0-9.,]{2,})|(-?[0-9]+)"
+    - function: "take_first_k"
+      k: 5000
+
+  - name: "pass@10000"
+    filter:
+    - function: "regex"
+      group_select: -1
+      regex_pattern: "(-?[$0-9.,]{2,})|(-?[0-9]+)"
+    - function: "take_first_k"
+      k: 10000
 
 process_results: !function util.process_results
 metadata:

@@ -1321,6 +1321,9 @@ class SRMHFLM(TemplateLM):
             kwargs["max_length"] = 1024
             kwargs["max_new_tokens"] = 256 # for GSM8k
             # perform batched generation
+            if self.use_recurrent:
+                self.model.clear_cache()
+
             cont = self.model.generate(context_enc, max_new_tokens=256, do_sample=True, top_p=0.9, temperature=0.7)
             # cont = self._model_generate(
             #     context=context_enc,

@@ -72,8 +72,6 @@ class CombinedRepeatCausalLinear(nn.Module):
         self.col_cache = torch.zeros(embedding)
 
     def forward(self, x: torch.Tensor, index: int) -> torch.Tensor:
-        if x.dim() > 2:
-            return self.prefill_forward(x)
         B, E, = x.shape
         decay_value = (torch.clip(self.decay_value, min=0.9, max=1)**(1/self.decay_constant)).to(x.device)
         x = x.reshape(B * E, S)  # (B*E, S)
@@ -142,8 +140,6 @@ class HeadedRepeatCausalLinear(nn.Module):
         self.cache = torch.zeros(heads, head_dim).to('cuda') # first half of cache vectors are row repeat, second half are col repeat
 
     def forward(self, x: torch.Tensor, index: int) -> torch.Tensor:
-        if x.dim() > 2:
-            return self.prefill_forward(x)
         x = x.to(device) # x has shape [b * h, e]
         x = rearrange(x, '(b h) e -> b e h', h=self.heads)
         decay_value = (torch.clip(self.decay_value, min=0.9, max=1)**(1/self.decay_constant)).to(x.device)
@@ -483,6 +479,7 @@ class RecurrentMixer(RecurrentMLPMixer, GenerationMixin):
         for block in self.mixer_blocks:
             for h in range(len(block.token_mixing_layer.mixer_heads)):
                 block.token_mixing_layer.mixer_heads[h].cache = torch.zeros(self.hidden_dim//self.n_heads).to('cuda') # only for mixed heads
+        self.cache_built = False
 
     def forward(self, input_ids, labels=None, **kwargs):
         if not self.cache_built:

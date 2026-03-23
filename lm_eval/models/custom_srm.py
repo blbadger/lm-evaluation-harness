@@ -827,7 +827,6 @@ class SRMHFLM(TemplateLM):
     
         if self.use_recurrent:
             self.model.clear_cache()
-            self.model.cache_build = False
 
         # temperature = 0.0 if not set
         # if do_sample is false and temp==0.0:

@@ -43,8 +43,8 @@ from lm_eval.models.utils import (
     postprocess_generated_text,
     stop_sequences_criteria,
 )
-from lm_eval.models.srm_model import MLPMixer
 from lm_eval.models.recurrent_srm_model import RecurrentMixer
+from lm_eval.models.dual_srm_mdoel import DualMixer
 import safetensors
 
 import os
@@ -656,7 +656,7 @@ class SRMHFLM(TemplateLM):
         if self.use_recurrent:
             model = RecurrentMixer(*model_args, **model_kwargs)
         else:
-            model = MLPMixer(*model_args, **model_kwargs)
+            model = DualMixer(*model_args, **model_kwargs)
     
         safetensors.torch.load_model(model, model_path)
         self._model = torch.compile(model.to(self.compute_datatype)).to(self.device)
@@ -713,7 +713,7 @@ class SRMHFLM(TemplateLM):
         if self.use_recurrent:
             model = RecurrentMixer(*model_args, **model_kwargs)
         else:
-            model = MLPMixer(*model_args, **model_kwargs)
+            model = DualMixer(*model_args, **model_kwargs)
     
         safetensors.torch.load_model(model, reward_model_path)
         reward_model = torch.compile(model.to(self.compute_datatype)).to(self.device)
@@ -1409,7 +1409,7 @@ class SRMHFLM(TemplateLM):
             # tree selection only
             if not self.tree_expansion:
                 cont = self.model.generate(context_enc, max_new_tokens=256, do_sample=True, top_p=0.9, temperature=0.7)
-                rewards = self.reward_model(cont[:, 1:]).logits[:, -1] # recurrent build of rewards
+                rewards = self.reward_model(cont).logits[:, -1] # recurrent build of rewards
                 top_indices = torch.topk(all_rewards, k).indices
 
             # tree expansion and selection

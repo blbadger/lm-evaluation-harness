@@ -1315,7 +1315,7 @@ class SRMHFLM(TemplateLM):
             context_enc = context_enc.to(self.device)
             attn_masks = attn_masks.to(self.device)
             # truncate input if necessary
-            context_enc, attn_masks = context_enc[:, -900:], attn_masks[:, -900:] # -980:
+            context_enc, attn_masks = context_enc[:, -800:], attn_masks[:, -800:] # -980:
             #print (context_enc.shape, self.max_length)
             #print (context_enc)
             #print (f'\n\n Decoded input: {self.tokenizer.decode(context_enc[0])}')

@@ -52,6 +52,7 @@ MODEL_MAPPING = {
     "steered": "lm_eval.models.hf_steered:SteeredHF",
     "textsynth": "lm_eval.models.textsynth:TextSynthLM",
     "srm": "lm_eval.models.custom_srm:SRMHFLM",
+    "tree-srm": "lm_eval.models.custom_tree_srm:SRMHFLM",
     "tmm": "lm_eval.models.custom_tmm:TMMHFLM",
     "vllm": "lm_eval.models.vllm_causallms:VLLM",
     "vllm-vlm": "lm_eval.models.vllm_vlms:VLLM_VLM",

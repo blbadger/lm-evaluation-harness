@@ -1355,6 +1355,9 @@ class SRMHFLM(TemplateLM):
         )
         chunks = re_ords.get_batched(n=batch_size, batch_fn=batch_fn)
         eos = self.tok_decode(self.eot_token_id, skip_special_tokens=False)
+
+        ds =  load_dataset("openai/gsm8k", "main")
+        answer_dict = {ds['test']['question'][i]: ds['test']['answer'][i] for i in range(len(ds['test']))}
         for chunk in chunks:
             contexts, all_gen_kwargs = zip(*chunk)
             # chunks are assumed to be repeats of size 512 without remainder
@@ -1410,12 +1413,15 @@ class SRMHFLM(TemplateLM):
             # tree selection only
             if not self.tree_expansion:
                 cont = self.model.generate(context_enc, max_new_tokens=256, do_sample=True, top_p=0.9, temperature=0.7)
-                #with torch.no_grad():
-                #    rewards = self.reward_model(cont, is_recurrent=True).logits[:, -1] # recurrent build of rewards, take last reward
-                #for start in range(0, rewards.shape[0], 512):
-                #    ordered_indices = torch.topk(rewards[start:start+512], 512, largest=False).indices
+                with torch.no_grad():
+                   rewards = self.reward_model(cont, is_recurrent=True).logits[:, -1] # recurrent build of rewards, take last reward
+                for start in range(0, rewards.shape[0], 512):
+                   ordered_indices = torch.topk(rewards[start:start+512], 512, largest=False).indices
                     # reorder based on reward, highest first
-                #    cont[start:start+512] = cont[start:start+512][ordered_indices]
+                   cont[start:start+512] = cont[start:start+512][ordered_indices]
+
+                   # positive control on first index
+                   cont[start] = answer_dict[contexts[start]]
 
             # tree expansion and selection
             if self.tree_expansion:

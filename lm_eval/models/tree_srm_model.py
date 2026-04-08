@@ -69,9 +69,8 @@ class DualMLPMixer(DualMixer, GenerationMixin):
 		self.device = self.output_layer.weight.device
 		self.warnings_issued={}
 		self.is_reward_model = is_reward_model
-		if is_reward_model:
-			self.loss_fn = nn.MSELoss()
-			self.reward_head = nn.Linear(self.hidden_dim, 1)
+		self.loss_fn = nn.MSELoss()
+		self.reward_head = nn.Linear(self.hidden_dim, 1)
 	
 	def add_model_tags(self, tag):
 		print (tag)
@@ -121,12 +120,10 @@ class DualMLPMixer(DualMixer, GenerationMixin):
 				block.token_mixing_layer.mixer_heads[h].cache = block.token_mixing_layer.mixer_heads[h].cache[top_indices, :].repeat(expansion_factor, 1)
 
 	def forward(self, input_ids, labels=None, is_recurrent=False, **kwargs):
+		# assumes a reward model implementation
 		if not is_recurrent:
 			is_recurrent = input_ids.shape[1] < self.seq_len
 		print (f'is recurrent: {is_recurrent}')
-		# mask pad tokens in labels for loss computation
-		if labels is not None:
-			labels = torch.where(labels==tokenizer.pad_token_id, -100., labels).to(self.input_layer.weight.dtype)
 		if not self.cache_built and is_recurrent:
 			self.build_cache(input_ids)
 		index = input_ids.shape[1] - 1
@@ -138,24 +135,7 @@ class DualMLPMixer(DualMixer, GenerationMixin):
 		for block in self.mixer_blocks:
 			x = block(x, index, is_recurrent)
 
-		if not self.is_reward_model:
-			logits = self.output_layer(x).unsqueeze(1)
-		else:
-			# reward model output
-			output = self.reward_head(x).squeeze(-1)
-			if labels is not None:
-				loss = self.loss_fn(output, labels)
-			else:
-				loss = 0
-			return CausalLMOutput(loss=loss, logits=output)
+		output = self.reward_head(x).squeeze(-1)
+		return CausalLMOutput(loss=0., logits=output)
 
-		# policy model output
-		if labels is not None:
-			shift_logits = logits[:, :-1].contiguous()
-			shift_labels = labels[:, 1:].contiguous()
-			shift_logits = shift_logits.view(-1, self.vocab_size)
-			shift_labels = shift_labels.view(-1)
-			loss = self.loss_fn(shift_logits, shift_labels)
-			return CausalLMOutput(loss=loss, logits=logits)
-		else:
-			return CausalLMOutput(loss=0, logits=logits)
+

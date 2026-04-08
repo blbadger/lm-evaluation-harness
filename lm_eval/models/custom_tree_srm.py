@@ -49,6 +49,7 @@ import safetensors
 
 import os
 from dotenv import load_dotenv
+from datasets import load_dataset
 
 if TYPE_CHECKING:
     from transformers.quantizers.auto import AutoQuantizationConfig

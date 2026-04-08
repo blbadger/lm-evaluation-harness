@@ -52,6 +52,7 @@ filter_list:
       regex_pattern: "(-?[$0-9.,]{2,})|(-?[0-9]+)"
     - function: "take_first_k"
       k: 10
+
   - name: "pass@15"
     filter:
     - function: "regex"
@@ -59,6 +60,7 @@ filter_list:
       regex_pattern: "(-?[$0-9.,]{2,})|(-?[0-9]+)"
     - function: "take_first_k"
       k: 15
+
   - name: "pass@20"
     filter:
     - function: "regex"
@@ -66,6 +68,7 @@ filter_list:
       regex_pattern: "(-?[$0-9.,]{2,})|(-?[0-9]+)"
     - function: "take_first_k"
       k: 20
+
   - name: "pass@25"
     filter:
     - function: "regex"
@@ -73,6 +76,7 @@ filter_list:
       regex_pattern: "(-?[$0-9.,]{2,})|(-?[0-9]+)"
     - function: "take_first_k"
       k: 25
+
   - name: "pass@30"
     filter:
     - function: "regex"
@@ -80,6 +84,7 @@ filter_list:
       regex_pattern: "(-?[$0-9.,]{2,})|(-?[0-9]+)"
     - function: "take_first_k"
       k: 30
+
   - name: "pass@40"
     filter:
     - function: "regex"
@@ -87,6 +92,7 @@ filter_list:
       regex_pattern: "(-?[$0-9.,]{2,})|(-?[0-9]+)"
     - function: "take_first_k"
       k: 40
+
   - name: "pass@50"
     filter:
     - function: "regex"
@@ -94,6 +100,39 @@ filter_list:
       regex_pattern: "(-?[$0-9.,]{2,})|(-?[0-9]+)"
     - function: "take_first_k"
       k: 50
+
+  - name: "pass@75"
+    filter:
+    - function: "regex"
+      group_select: -1
+      regex_pattern: "(-?[$0-9.,]{2,})|(-?[0-9]+)"
+    - function: "take_first_k"
+      k: 75
+
+  - name: "pass@100"
+    filter:
+    - function: "regex"
+      group_select: -1
+      regex_pattern: "(-?[$0-9.,]{2,})|(-?[0-9]+)"
+    - function: "take_first_k"
+      k: 100
+
+  - name: "pass@250"
+    filter:
+    - function: "regex"
+      group_select: -1
+      regex_pattern: "(-?[$0-9.,]{2,})|(-?[0-9]+)"
+    - function: "take_first_k"
+      k: 250
+
+  - name: "pass@500"
+    filter:
+    - function: "regex"
+      group_select: -1
+      regex_pattern: "(-?[$0-9.,]{2,})|(-?[0-9]+)"
+    - function: "take_first_k"
+      k: 500
+
 
 process_results: !function util.process_results
 metadata:

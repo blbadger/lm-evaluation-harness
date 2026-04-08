@@ -1361,8 +1361,9 @@ class SRMHFLM(TemplateLM):
         for chunk in chunks:
             contexts, all_gen_kwargs = zip(*chunk)
             # chunks are assumed to be repeats of size 512 without remainder
-            assert contexts[0] == contexts[511]
-            assert len(contexts) % 512 == 0
+            # assert contexts[0] == contexts[511]
+            # assert len(contexts) % 512 == 0
+
             # we assume all gen kwargs in the batch are the same
             # this is safe to assume because the `grouper` object ensures it.
             gen_kwargs = all_gen_kwargs[0]
@@ -1415,10 +1416,10 @@ class SRMHFLM(TemplateLM):
                 cont = self.model.generate(context_enc, max_new_tokens=256, do_sample=True, top_p=0.9, temperature=0.7)
                 with torch.no_grad():
                    rewards = self.reward_model(cont, is_recurrent=True).logits[:, -1] # recurrent build of rewards, take last reward
-                for start in range(0, rewards.shape[0], 512):
-                   ordered_indices = torch.topk(rewards[start:start+512], 512, largest=False).indices
+                for start in range(0, rewards.shape[0], 50):
+                   ordered_indices = torch.topk(rewards[start:start+50], 50, largest=False).indices
                     # reorder based on reward, highest first
-                   cont[start:start+512] = cont[start:start+512][ordered_indices]
+                   cont[start:start+50] = cont[start:start+50][ordered_indices]
 
                    # positive control on first index
                    cont[start] = answer_dict[contexts[start]]

@@ -17,11 +17,8 @@ import os
 import re
 from dotenv import load_dotenv
 import shutil
-from repeat_main import MLPMixer
-from cached_inference import CachedMLPMixer
-from recurrent_inference import RecurrentMLPMixer
 from transformers import TextStreamer
-from dual_srm import DualMLPMixer
+from dual_srm_model import DualMixer
 import warnings
 import time
 import uuid
@@ -30,7 +27,7 @@ from tqdm import tqdm
 warnings.simplefilter(action='ignore', category=UserWarning)
 
 
-class DualMixer(DualMLPMixer, GenerationMixin):
+class DualMixer(DualMixer, GenerationMixin):
 
 	def __init__(
 		self,

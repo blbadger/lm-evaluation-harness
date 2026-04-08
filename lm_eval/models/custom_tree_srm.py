@@ -1416,14 +1416,20 @@ class SRMHFLM(TemplateLM):
             if not self.tree_expansion:
                 cont = self.model.generate(context_enc, max_new_tokens=256, do_sample=True, top_p=0.9, temperature=0.7)
                 with torch.no_grad():
-                   rewards = self.reward_model(cont, is_recurrent=True).logits[:, -1] # recurrent build of rewards, take last reward
+                    rewards = self.reward_model(cont, is_recurrent=True).logits[:, -1] # recurrent build of rewards, take last reward
                 for start in range(0, rewards.shape[0], 50):
-                   ordered_indices = torch.topk(rewards[start:start+50], 50, largest=False).indices
-                    # reorder based on reward, highest first
-                   cont[start:start+50] = cont[start:start+50][ordered_indices]
+                    ordered_indices = torch.topk(rewards[start:start+50], 50, largest=False).indices
+                     # reorder based on reward, highest first
+                    cont[start:start+50] = cont[start:start+50][ordered_indices]
 
-                   # positive control on first index
-                   cont[start] = torch.tensor(self.tok_encode(answer_dict[contexts[start].split('Question: ')[-1][:-8]], padding='max_length', max_length=1024, padding_side='left')).flatten()
+                    # positive control on first index
+                    positive_tokens = torch.tensor(self.tok_encode(answer_dict[contexts[start].split('Question: ')[-1][:-8]], 
+                        truncation=True, 
+                        padding='max_length', 
+                        max_length=len(cont[start]), 
+                        padding_side='left')).flatten()
+                    print (positive_tokens.shape, cont[start].shape)
+                    cont[start] = positive_tokens
 
             # tree expansion and selection
             if self.tree_expansion:

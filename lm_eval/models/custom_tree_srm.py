@@ -1423,7 +1423,7 @@ class SRMHFLM(TemplateLM):
                    cont[start:start+50] = cont[start:start+50][ordered_indices]
 
                    # positive control on first index
-                   cont[start] = torch.tensor(self.tok_encode(answer_dict[contexts[start].split('Question: ')[-1][:-8]])).flatten()
+                   cont[start] = torch.tensor(self.tok_encode(answer_dict[contexts[start].split('Question: ')[-1][:-8]]), padding='max_length', max_length=1024, padding_side='left').flatten()
 
             # tree expansion and selection
             if self.tree_expansion:

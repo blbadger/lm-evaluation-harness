@@ -1418,8 +1418,9 @@ class SRMHFLM(TemplateLM):
                 cont = self.model.generate(context_enc, max_new_tokens=256, do_sample=True, top_p=0.9, temperature=0.7)
                 with torch.no_grad():
                     # full_prompt = torch.cat((context_enc, cont), dim=1)
-                    print (self.tok_decode(cont[0]))
-                    rewards = self.reward_model(full_prompt[:, 1:], is_recurrent=True).logits[:, -1] # recurrent build of rewards, take last reward
+                    # print (self.tok_decode(cont[0]))
+                    print (cont.shape)
+                    rewards = self.reward_model(cont[:, 1:], is_recurrent=True).logits[:, -1] # recurrent build of rewards, take last reward
                 for start in range(0, rewards.shape[0], 50):
                     ordered_indices = torch.topk(rewards[start:start+50], 50, largest=False).indices
                      # reorder based on reward, highest first

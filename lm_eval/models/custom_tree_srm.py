@@ -1427,6 +1427,7 @@ class SRMHFLM(TemplateLM):
                     cont[start:start+50] = cont[start:start+50][ordered_indices]
 
                     # positive control on first index
+                    tokenizer.pad_token = tokenizer.eos_token
                     positive_tokens = tokenizer.encode(
                         answer_dict[contexts[start].split('Question: ')[-1][:-8]], 
                         truncation=True, 

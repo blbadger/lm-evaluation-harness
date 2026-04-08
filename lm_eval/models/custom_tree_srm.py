@@ -1359,6 +1359,7 @@ class SRMHFLM(TemplateLM):
 
         ds =  load_dataset("openai/gsm8k", "main")
         answer_dict = {ds['test']['question'][i]: ds['test']['answer'][i] for i in range(len(ds['test']))}
+        tokenizer = AutoTokenizer.from_pretrained('/home/bbadger/Desktop/tokenizer_fineweb_8k')
         for chunk in chunks:
             contexts, all_gen_kwargs = zip(*chunk)
             # chunks are assumed to be repeats of size 512 without remainder
@@ -1416,18 +1417,20 @@ class SRMHFLM(TemplateLM):
             if not self.tree_expansion:
                 cont = self.model.generate(context_enc, max_new_tokens=256, do_sample=True, top_p=0.9, temperature=0.7)
                 with torch.no_grad():
-                    rewards = self.reward_model(cont, is_recurrent=True).logits[:, -1] # recurrent build of rewards, take last reward
+                    full_prompt = torch.cat((cont_enc, cont), dim=1)
+                    rewards = self.reward_model(full_prompt, is_recurrent=True).logits[:, -1] # recurrent build of rewards, take last reward
                 for start in range(0, rewards.shape[0], 50):
                     ordered_indices = torch.topk(rewards[start:start+50], 50, largest=False).indices
                      # reorder based on reward, highest first
                     cont[start:start+50] = cont[start:start+50][ordered_indices]
 
                     # positive control on first index
-                    positive_tokens = torch.tensor(self.tok_encode(answer_dict[contexts[start].split('Question: ')[-1][:-8]], 
+                    positive_tokens = tokenizer.encode(answer_dict[contexts[start].split('Question: ')[-1][:-8]], 
                         truncation=True, 
                         padding='max_length', 
                         max_length=len(cont[start]), 
-                        padding_side='left')).flatten()
+                        padding_side='left', 
+                        return_tensors='pt').input_ids.flatten()
                     print (positive_tokens.shape, cont[start].shape)
                     cont[start] = positive_tokens
 

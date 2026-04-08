@@ -1404,7 +1404,7 @@ class SRMHFLM(TemplateLM):
             context_enc = context_enc.to(self.device)
             attn_masks = attn_masks.to(self.device)
             # truncate input if necessary
-            context_enc, attn_masks = context_enc[:, -900:], attn_masks[:, -900:]
+            context_enc, attn_masks = context_enc[:, -(1024-256):], attn_masks[:, -(1024-256):]
             kwargs["max_length"] = 1024
             kwargs["max_new_tokens"] = 256 # for GSM8k
             new_token_number = 20
@@ -1418,6 +1418,7 @@ class SRMHFLM(TemplateLM):
                 cont = self.model.generate(context_enc, max_new_tokens=256, do_sample=True, top_p=0.9, temperature=0.7)
                 with torch.no_grad():
                     full_prompt = torch.cat((context_enc, cont), dim=1)
+                    print (full_prompt.shape)
                     rewards = self.reward_model(full_prompt[:, 1:], is_recurrent=True).logits[:, -1] # recurrent build of rewards, take last reward
                 for start in range(0, rewards.shape[0], 50):
                     ordered_indices = torch.topk(rewards[start:start+50], 50, largest=False).indices
@@ -1425,7 +1426,8 @@ class SRMHFLM(TemplateLM):
                     cont[start:start+50] = cont[start:start+50][ordered_indices]
 
                     # positive control on first index
-                    positive_tokens = tokenizer.encode(answer_dict[contexts[start].split('Question: ')[-1][:-8]], 
+                    positive_tokens = tokenizer.encode(
+                        answer_dict[contexts[start].split('Question: ')[-1][:-8]], 
                         truncation=True, 
                         padding='max_length', 
                         max_length=len(cont[start]), 

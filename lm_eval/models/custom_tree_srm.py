@@ -44,7 +44,7 @@ from lm_eval.models.utils import (
     stop_sequences_criteria,
 )
 from lm_eval.models.recurrent_srm_model import RecurrentMixer
-from lm_eval.models.dual_srm_mdoel import DualMixer
+from lm_eval.models.dual_srm_model import DualMixer
 import safetensors
 
 import os
@@ -710,12 +710,9 @@ class SRMHFLM(TemplateLM):
                 'parallel_heads': False, 
                 'use_projections': True
             }
-        if self.use_recurrent:
-            model = RecurrentMixer(*model_args, **model_kwargs)
-        else:
-            model = DualMixer(*model_args, **model_kwargs)
+        model = DualMixer(*model_args, is_reward_model=True, **model_kwargs)
     
-        safetensors.torch.load_model(model, reward_model_path)
+        safetensors.torch.load_model(model, self.reward_model_path)
         reward_model = torch.compile(model.to(self.compute_datatype)).to(self.device)
         return reward_model
 
@@ -1358,6 +1355,7 @@ class SRMHFLM(TemplateLM):
         chunks = re_ords.get_batched(n=batch_size, batch_fn=batch_fn)
         eos = self.tok_decode(self.eot_token_id, skip_special_tokens=False)
         for chunk in chunks:
+            print (chunk[0],'\n\n' ,chunk[1],'\n\n', chunk[2],'\n\n',  chunk[3])
             contexts, all_gen_kwargs = zip(*chunk)
             # we assume all gen kwargs in the batch are the same
             # this is safe to assume because the `grouper` object ensures it.
@@ -1393,7 +1391,7 @@ class SRMHFLM(TemplateLM):
                 left_truncate_len=max_ctx_len,
                 truncation=self.truncation,
             )
-            print (contexts)
+
             context_enc = context_enc.to(self.device)
             attn_masks = attn_masks.to(self.device)
             # truncate input if necessary

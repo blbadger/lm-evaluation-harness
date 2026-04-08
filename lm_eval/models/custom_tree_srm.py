@@ -713,7 +713,8 @@ class SRMHFLM(TemplateLM):
         model = DualMLPMixer(*model_args, is_reward_model=True, **model_kwargs)
     
         safetensors.torch.load_model(model, self.reward_model_path)
-        reward_model = torch.compile(model.to(self.compute_datatype)).to(self.device)
+        reward_model = model.to(self.compute_datatype).to(self.device)
+        # reward_model = torch.compile(model.to(self.compute_datatype)).to(self.device)
         return reward_model
 
 

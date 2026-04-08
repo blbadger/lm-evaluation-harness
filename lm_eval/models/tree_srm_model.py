@@ -123,7 +123,7 @@ class DualMLPMixer(DualMixer, GenerationMixin):
 		# assumes a reward model implementation
 		if not is_recurrent:
 			is_recurrent = input_ids.shape[1] < self.seq_len
-		print (f'is recurrent: {is_recurrent}')
+
 		if not self.cache_built and is_recurrent:
 			self.build_cache(input_ids)
 		index = input_ids.shape[1] - 1

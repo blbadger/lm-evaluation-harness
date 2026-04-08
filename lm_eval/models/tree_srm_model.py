@@ -123,6 +123,7 @@ class DualMLPMixer(DualMixer, GenerationMixin):
 	def forward(self, input_ids, labels=None, is_recurrent=False, **kwargs):
 		if not is_recurrent:
 			is_recurrent = input_ids.shape[1] < self.seq_len
+		print (f'is recurrent: {is_recurrent}')
 		# mask pad tokens in labels for loss computation
 		if labels is not None:
 			labels = torch.where(labels==tokenizer.pad_token_id, -100., labels).to(self.input_layer.weight.dtype)

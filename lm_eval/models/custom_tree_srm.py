@@ -44,7 +44,7 @@ from lm_eval.models.utils import (
     stop_sequences_criteria,
 )
 from lm_eval.models.recurrent_srm_model import RecurrentMixer
-from lm_eval.models.dual_srm_model import DualMixer
+from lm_eval.models.tree_srm_model import DualMixer
 import safetensors
 
 import os

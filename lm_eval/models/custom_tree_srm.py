@@ -1423,7 +1423,7 @@ class SRMHFLM(TemplateLM):
                    cont[start:start+50] = cont[start:start+50][ordered_indices]
 
                    # positive control on first index
-                   cont[start] = tokenizer.encode(answer_dict[contexts[start].split('Question: ')[-1][:-8]])
+                   cont[start] = self.tok_encode(answer_dict[contexts[start].split('Question: ')[-1][:-8]])
 
             # tree expansion and selection
             if self.tree_expansion:

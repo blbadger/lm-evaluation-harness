@@ -1409,7 +1409,8 @@ class SRMHFLM(TemplateLM):
             # tree selection only
             if not self.tree_expansion:
                 cont = self.model.generate(context_enc, max_new_tokens=256, do_sample=True, top_p=0.9, temperature=0.7)
-                rewards = self.reward_model(cont, recurrent=True).logits[:, -1] # recurrent build of rewards, take last reward
+                with torch.no_grad():
+                    rewards = self.reward_model(cont, recurrent=True).logits[:, -1] # recurrent build of rewards, take last reward
                 for start in range(0, len_rewards, 512):
                     ordered_indices = torch.topk(rewards[start:start+512]).indices
                     # reorder based on reward, highest first

@@ -707,7 +707,7 @@ class SRMHFLM(TemplateLM):
                 'mixed_heads': True, 
                 'combined_heads': False, 
                 'decay': True,
-                'parallel_heads': False, 
+                'parallel_heads': False,    
                 'use_projections': True
             }
         model = DualMLPMixer(*model_args, is_reward_model=True, **model_kwargs)

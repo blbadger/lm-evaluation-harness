@@ -44,7 +44,7 @@ from lm_eval.models.utils import (
     stop_sequences_criteria,
 )
 from lm_eval.models.recurrent_srm_model import RecurrentMixer
-from lm_eval.models.tree_srm_model import DualMixer
+from lm_eval.models.tree_srm_model import DualMLPMixer
 import safetensors
 
 import os
@@ -656,7 +656,7 @@ class SRMHFLM(TemplateLM):
         if self.use_recurrent:
             model = RecurrentMixer(*model_args, **model_kwargs)
         else:
-            model = DualMixer(*model_args, **model_kwargs)
+            model = DualMLPMixer(*model_args, **model_kwargs)
     
         safetensors.torch.load_model(model, model_path)
         self._model = torch.compile(model.to(self.compute_datatype)).to(self.device)
@@ -710,7 +710,7 @@ class SRMHFLM(TemplateLM):
                 'parallel_heads': False, 
                 'use_projections': True
             }
-        model = DualMixer(*model_args, is_reward_model=True, **model_kwargs)
+        model = DualMLPMixer(*model_args, is_reward_model=True, **model_kwargs)
     
         safetensors.torch.load_model(model, self.reward_model_path)
         reward_model = torch.compile(model.to(self.compute_datatype)).to(self.device)

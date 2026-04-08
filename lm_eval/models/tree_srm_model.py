@@ -18,7 +18,7 @@ import re
 from dotenv import load_dotenv
 import shutil
 from transformers import TextStreamer
-from dual_srm_model import DualMixer
+from lm_eval.models.dual_srm_model import DualMixer
 import warnings
 import time
 import uuid
@@ -27,7 +27,7 @@ from tqdm import tqdm
 warnings.simplefilter(action='ignore', category=UserWarning)
 
 
-class DualMixer(DualMixer, GenerationMixin):
+class DualMLPMixer(DualMixer, GenerationMixin):
 
 	def __init__(
 		self,

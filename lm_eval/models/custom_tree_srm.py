@@ -1434,7 +1434,7 @@ class SRMHFLM(TemplateLM):
                         padding='max_length', 
                         max_length=len(cont[start]), 
                         padding_side='left', 
-                        return_tensors='pt').input_ids.flatten()
+                        return_tensors='pt').flatten()
                     print (positive_tokens.shape, cont[start].shape)
                     cont[start] = positive_tokens
 

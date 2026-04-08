@@ -123,8 +123,9 @@ class DualMixer(DualMLPMixer, GenerationMixin):
 			for h in range(len(block.token_mixing_layer.mixer_heads)):
 				block.token_mixing_layer.mixer_heads[h].cache = block.token_mixing_layer.mixer_heads[h].cache[top_indices, :].repeat(expansion_factor, 1)
 
-	def forward(self, input_ids, labels=None, **kwargs):
-		is_recurrent = input_ids.shape[1] < self.seq_len
+	def forward(self, input_ids, labels=None, is_recurrent=False, **kwargs):
+		if not is_recurrent:
+			is_recurrent = input_ids.shape[1] < self.seq_len
 		#print (is_recurrent, input_ids.device, self.input_layer.weight.device, input_ids.shape, input_ids.dtype)
 		# mask pad tokens in labels for loss computation
 		if labels is not None:

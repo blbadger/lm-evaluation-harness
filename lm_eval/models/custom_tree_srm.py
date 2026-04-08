@@ -1355,8 +1355,10 @@ class SRMHFLM(TemplateLM):
         chunks = re_ords.get_batched(n=batch_size, batch_fn=batch_fn)
         eos = self.tok_decode(self.eot_token_id, skip_special_tokens=False)
         for chunk in chunks:
-            print (chunk[0],'\n\n' ,chunk[1],'\n\n', chunk[2],'\n\n',  chunk[3])
             contexts, all_gen_kwargs = zip(*chunk)
+            # chunks are assumed to be repeats of size 512 without remainder
+            assert contexts[0] == contexts[511]
+            assert len(contexts) % 512 == 0
             # we assume all gen kwargs in the batch are the same
             # this is safe to assume because the `grouper` object ensures it.
             gen_kwargs = all_gen_kwargs[0]
@@ -1407,11 +1409,14 @@ class SRMHFLM(TemplateLM):
             # tree selection only
             if not self.tree_expansion:
                 cont = self.model.generate(context_enc, max_new_tokens=256, do_sample=True, top_p=0.9, temperature=0.7)
-                rewards = self.reward_model(cont).logits[:, -1] # recurrent build of rewards
-                top_indices = torch.topk(all_rewards, k).indices
+                rewards = self.reward_model(cont, recurrent=True).logits[:, -1] # recurrent build of rewards, take last reward
+                for start in range(0, len_rewards, 512):
+                    ordered_indices = torch.topk(rewards[start:start+512]).indices
+                    # reorder based on reward, highest first
+                    cont[start:start+512] = cont[start:start+512][ordered_indices]
 
             # tree expansion and selection
-            else:
+            if self.tree_expansion:
                 while context < kwargs["max_new_tokens"]:
                     cont = self.model.generate(context_enc, max_new_tokens=new_tokens, do_sample=True, top_p=0.9, temperature=0.7)
                     # generate rewards via recurrent forwards   
@@ -1432,10 +1437,6 @@ class SRMHFLM(TemplateLM):
                 selected_samples = input_ids[top_indices, :]
 
             print ('\nGeneration Complete')
-
-            # select outputs via RM
-            
-
             cont_toks_list = cont.tolist()
             for cont_toks, context in zip(cont_toks_list, contexts):
                 # discard context + left-padding toks if using causal decoder-only LM
@@ -1470,8 +1471,10 @@ class SRMHFLM(TemplateLM):
 
                 self.cache_hook.add_partial("generate_until", (context, gen_kwargs), s)
                 pbar.update(1)
-        # reorder this group of results back to original unsorted form
-        res = re_ords.get_original(res)
+
+        # no reordering
+        # # reorder this group of results back to original unsorted form
+        # res = re_ords.get_original(res)
 
         pbar.close()
 

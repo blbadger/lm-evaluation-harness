@@ -1418,7 +1418,6 @@ class SRMHFLM(TemplateLM):
                 # cont = self.model.generate(context_enc, max_new_tokens=256, do_sample=True, top_p=0.9, temperature=0.7)
                 cont = torch.ones((context_enc.shape[0], 1024), dtype=torch.long)
                 with torch.no_grad():
-                    print (cont.shape)
                     # rewards = self.reward_model(cont[:, 1:], is_recurrent=True).logits[:, -1] # recurrent build of rewards, take last reward
                 for start in range(0, context_enc.shape[0], 50):
                     # ordered_indices = torch.topk(rewards[start:start+50], 50, largest=False).indices
@@ -1427,7 +1426,7 @@ class SRMHFLM(TemplateLM):
 
                     # positive control on first index
                     tokenizer.pad_token = tokenizer.eos_token
-                    for k in range(50):
+                    for k in range(min(50, context_enc.shape[0] - start)):
                         positive_tokens = tokenizer.encode(
                             answer_dict[contexts[start+k].split('Question: ')[-1][:-8]], 
                             truncation=True, 
@@ -1436,6 +1435,8 @@ class SRMHFLM(TemplateLM):
                             padding_side='left', 
                             return_tensors='pt').flatten().to(cont.device)
                         cont[start+k] = torch.cat((cont[start+k], positive_tokens), dim=0)[-1024:]
+
+            print (context_enc.shape, cont.shape)
 
             # tree expansion and selection
             if self.tree_expansion:

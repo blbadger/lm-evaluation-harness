@@ -1430,10 +1430,10 @@ class SRMHFLM(TemplateLM):
                     tokenizer.pad_token = tokenizer.eos_token
                     for k in range(50):
                         positive_tokens = tokenizer.encode(
-                            answer_dict[contexts[start+i].split('Question: ')[-1][:-8]], 
+                            answer_dict[contexts[start+k].split('Question: ')[-1][:-8]], 
                             truncation=True, 
                             padding='max_length', 
-                            max_length=len(cont[start]), 
+                            max_length=len(cont[start+k]), 
                             padding_side='left', 
                             return_tensors='pt').repeat(50, 1)
                         print (positive_tokens.shape, cont[start].shape)

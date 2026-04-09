@@ -1415,7 +1415,8 @@ class SRMHFLM(TemplateLM):
 
             # tree selection only
             if not self.tree_expansion:
-                cont = self.model.generate(context_enc, max_new_tokens=256, do_sample=True, top_p=0.9, temperature=0.7)
+                # cont = self.model.generate(context_enc, max_new_tokens=256, do_sample=True, top_p=0.9, temperature=0.7)
+                cont = context_enc
                 with torch.no_grad():
                     # full_prompt = torch.cat((context_enc, cont), dim=1)
                     # print (self.tok_decode(cont[0]))
@@ -1435,7 +1436,7 @@ class SRMHFLM(TemplateLM):
                             padding='max_length', 
                             max_length=len(cont[start+k]), 
                             padding_side='left', 
-                            return_tensors='pt').repeat(50, 1)
+                            return_tensors='pt').flatten()
                         print (positive_tokens.shape, cont[start].shape)
                         cont[start+k] = positive_tokens
 

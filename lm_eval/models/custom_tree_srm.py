@@ -74,6 +74,7 @@ class SRMHFLM(TemplateLM):
     def __init__(
         self,
         pretrained: str | transformers.PreTrainedModel,
+        reward_pretrained: str  | transformers.PreTrainedModel,
         backend: Literal["default", "causal", "seq2seq"] = "default",
         # override whether the model should be treated as decoder-only (causal) or encoder-decoder (seq2seq)
         revision: str | None = "main",
@@ -113,6 +114,7 @@ class SRMHFLM(TemplateLM):
         enable_thinking: bool | None = None,
         chat_template_args: dict[str, Any] | None = None,
         tree_expansion=False,
+        tree_size=512,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -130,7 +132,7 @@ class SRMHFLM(TemplateLM):
         self._max_length = self.length
         self.max_gen_length = self.length
         self.tree_expansion = tree_expansion
-        self.reward_model_path = '/home/bbadger/Desktop/gsm8k_tree_reward_b512_continued/checkpoint-2600/model.safetensors'
+        self.tree_size = tree_size
         # optionally: take in an already-initialized transformers.PreTrainedModel
         if not isinstance(pretrained, str):
             eval_logger.warning(
@@ -263,6 +265,7 @@ class SRMHFLM(TemplateLM):
             )
 
         self.reward_model = self._create_reward_model(
+                reward_pretrained=reward_pretrained,
                 revision=revision,
                 dtype=dtype,
                 trust_remote_code=trust_remote_code,
@@ -665,6 +668,7 @@ class SRMHFLM(TemplateLM):
 
     def _create_reward_model(
         self,
+        reward_pretrained,
         revision: str | None = "main",
         dtype: str | torch.dtype | None = "auto",
         trust_remote_code: bool | None = False,
@@ -713,7 +717,7 @@ class SRMHFLM(TemplateLM):
             }
         model = DualMLPMixer(*model_args, is_reward_model=True, **model_kwargs)
     
-        safetensors.torch.load_model(model, self.reward_model_path)
+        safetensors.torch.load_model(model, reward_pretrained)
         reward_model = model.to(self.compute_datatype).to(self.device)
         # reward_model = torch.compile(model.to(self.compute_datatype)).to(self.device)
         return reward_model
@@ -1418,10 +1422,10 @@ class SRMHFLM(TemplateLM):
                 # cont = torch.ones((context_enc.shape[0], 1024), dtype=torch.long)
                 with torch.no_grad():
                     rewards = self.reward_model(cont[:, 1:], is_recurrent=True).logits[:, -1] # recurrent build of rewards, take last reward
-                for start in range(0, cont.shape[0], 512):
-                    ordered_indices = torch.topk(rewards[start:start+512], 512).indices
+                for start in range(0, cont.shape[0], tree_size):
+                    ordered_indices = torch.topk(rewards[start:start+tree_size], tree_size).indices
                     # reorder based on reward, highest first
-                    cont[start:start+512] = cont[start:start+512][ordered_indices]
+                    cont[start:start+tree_size] = cont[start:start+tree_size][ordered_indices]
 
                     # positive control on first index
                     # tokenizer.pad_token = tokenizer.eos_token
@@ -1435,8 +1439,6 @@ class SRMHFLM(TemplateLM):
                     #         padding_side='left', 
                     #         return_tensors='pt').flatten().to(cont.device)
                     #     cont[start+k] = positive_tokens
-
-            # print (context_enc.shape, cont.shape)
 
             # tree expansion and selection
             if self.tree_expansion:

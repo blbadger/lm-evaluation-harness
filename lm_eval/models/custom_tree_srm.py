@@ -1434,9 +1434,9 @@ class SRMHFLM(TemplateLM):
                         padding='max_length', 
                         max_length=len(cont[start]), 
                         padding_side='left', 
-                        return_tensors='pt').flatten()
+                        return_tensors='pt').repeat(50, 1)
                     print (positive_tokens.shape, cont[start].shape)
-                    cont[start] = positive_tokens
+                    cont[start:start+50] = positive_tokens
 
             # tree expansion and selection
             if self.tree_expansion:

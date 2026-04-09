@@ -1421,7 +1421,7 @@ class SRMHFLM(TemplateLM):
                     # full_prompt = torch.cat((context_enc, cont), dim=1)
                     # print (self.tok_decode(cont[0]))
                     print (cont.shape)
-                    rewards = self.reward_model(cont[:, 1:], is_recurrent=True).logits[:, -1] # recurrent build of rewards, take last reward
+                    # rewards = self.reward_model(cont[:, 1:], is_recurrent=True).logits[:, -1] # recurrent build of rewards, take last reward
                 for start in range(0, rewards.shape[0], 50):
                     ordered_indices = torch.topk(rewards[start:start+50], 50, largest=False).indices
                      # reorder based on reward, highest first
@@ -1437,7 +1437,6 @@ class SRMHFLM(TemplateLM):
                             max_length=len(cont[start+k]), 
                             padding_side='left', 
                             return_tensors='pt').flatten()
-                        print (positive_tokens.shape, cont[start].shape)
                         cont[start+k] = positive_tokens
 
             # tree expansion and selection

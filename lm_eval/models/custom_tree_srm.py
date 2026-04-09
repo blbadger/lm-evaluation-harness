@@ -1418,8 +1418,8 @@ class SRMHFLM(TemplateLM):
                 # cont = torch.ones((context_enc.shape[0], 1024), dtype=torch.long)
                 with torch.no_grad():
                     rewards = self.reward_model(cont[:, 1:], is_recurrent=True).logits[:, -1] # recurrent build of rewards, take last reward
-                for start in range(0, context_enc.shape[0], 512):
-                    ordered_indices = torch.topk(rewards[start:start+512], 512, largest=False).indices
+                for start in range(0, cont.shape[0], 512):
+                    ordered_indices = torch.topk(rewards[start:start+512], 512).indices
                     # reorder based on reward, highest first
                     cont[start:start+512] = cont[start:start+512][ordered_indices]
 

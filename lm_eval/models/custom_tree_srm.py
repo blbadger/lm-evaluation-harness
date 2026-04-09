@@ -1416,7 +1416,7 @@ class SRMHFLM(TemplateLM):
             # tree selection only
             if not self.tree_expansion:
                 # cont = self.model.generate(context_enc, max_new_tokens=256, do_sample=True, top_p=0.9, temperature=0.7)
-                cont = context_enc
+                cont = torch.ones(50, 1024)
                 with torch.no_grad():
                     # full_prompt = torch.cat((context_enc, cont), dim=1)
                     # print (self.tok_decode(cont[0]))
@@ -1437,7 +1437,7 @@ class SRMHFLM(TemplateLM):
                             max_length=len(cont[start+k]), 
                             padding_side='left', 
                             return_tensors='pt').flatten().to(cont.device)
-                        cont[start+k] = torch.cat((cont[start+k], positive_tokens), dim=0)
+                        cont[start+k] = torch.cat((cont[start+k], positive_tokens), dim=0)[-1024:]
 
             # tree expansion and selection
             if self.tree_expansion:

@@ -1431,10 +1431,10 @@ class SRMHFLM(TemplateLM):
                             answer_dict[contexts[start+k].split('Question: ')[-1][:-8]], 
                             truncation=True, 
                             padding='max_length', 
-                            max_length=len(cont[start+k]), 
+                            max_length=1024, 
                             padding_side='left', 
                             return_tensors='pt').flatten().to(cont.device)
-                        cont[start+k] = torch.cat((cont[start+k], positive_tokens), dim=0)[-1024:]
+                        cont[start+k] = positive_tokens
 
             print (context_enc.shape, cont.shape)
 

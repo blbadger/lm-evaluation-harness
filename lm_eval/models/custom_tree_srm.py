@@ -1436,7 +1436,7 @@ class SRMHFLM(TemplateLM):
                             padding='max_length', 
                             max_length=len(cont[start+k]), 
                             padding_side='left', 
-                            return_tensors='pt').flatten()
+                            return_tensors='pt').flatten().to(cont.device)
                         cont[start+k] = torch.cat((cont[start+k], positive_tokens), dim=0)
 
             # tree expansion and selection

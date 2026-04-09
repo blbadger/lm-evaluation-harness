@@ -1423,9 +1423,9 @@ class SRMHFLM(TemplateLM):
                     print (cont.shape)
                     # rewards = self.reward_model(cont[:, 1:], is_recurrent=True).logits[:, -1] # recurrent build of rewards, take last reward
                 for start in range(0, rewards.shape[0], 50):
-                    ordered_indices = torch.topk(rewards[start:start+50], 50, largest=False).indices
+                    # ordered_indices = torch.topk(rewards[start:start+50], 50, largest=False).indices
                      # reorder based on reward, highest first
-                    cont[start:start+50] = cont[start:start+50][ordered_indices]
+                    # cont[start:start+50] = cont[start:start+50][ordered_indices]
 
                     # positive control on first index
                     tokenizer.pad_token = tokenizer.eos_token

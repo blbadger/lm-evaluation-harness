@@ -1357,9 +1357,9 @@ class SRMHFLM(TemplateLM):
         chunks = re_ords.get_batched(n=batch_size, batch_fn=batch_fn)
         eos = self.tok_decode(self.eot_token_id, skip_special_tokens=False)
 
-        ds =  load_dataset("openai/gsm8k", "main")
-        answer_dict = {ds['test']['question'][i]: ds['test']['answer'][i] for i in range(len(ds['test']))}
-        tokenizer = AutoTokenizer.from_pretrained('/home/bbadger/Desktop/tokenizer_fineweb_8k')
+        # ds =  load_dataset("openai/gsm8k", "main")
+        # answer_dict = {ds['test']['question'][i]: ds['test']['answer'][i] for i in range(len(ds['test']))}
+        # tokenizer = AutoTokenizer.from_pretrained('/home/bbadger/Desktop/tokenizer_fineweb_8k')
         for chunk in chunks:
             contexts, all_gen_kwargs = zip(*chunk)
             # chunks are assumed to be repeats of size 512 without remainder
@@ -1415,29 +1415,29 @@ class SRMHFLM(TemplateLM):
 
             # tree selection only
             if not self.tree_expansion:
-                # cont = self.model.generate(context_enc, max_new_tokens=256, do_sample=True, top_p=0.9, temperature=0.7)
-                cont = torch.ones((context_enc.shape[0], 1024), dtype=torch.long)
-                # with torch.no_grad():
-                    # rewards = self.reward_model(cont[:, 1:], is_recurrent=True).logits[:, -1] # recurrent build of rewards, take last reward
+                cont = self.model.generate(context_enc, max_new_tokens=256, do_sample=True, top_p=0.9, temperature=0.7)
+                # cont = torch.ones((context_enc.shape[0], 1024), dtype=torch.long)
+                with torch.no_grad():
+                    rewards = self.reward_model(cont[:, 1:], is_recurrent=True).logits[:, -1] # recurrent build of rewards, take last reward
                 for start in range(0, context_enc.shape[0], 50):
-                    # ordered_indices = torch.topk(rewards[start:start+50], 50, largest=False).indices
-                     # reorder based on reward, highest first
-                    # cont[start:start+50] = cont[start:start+50][ordered_indices]
+                    ordered_indices = torch.topk(rewards[start:start+50], 50, largest=False).indices
+                    # reorder based on reward, highest first
+                    cont[start:start+50] = cont[start:start+50][ordered_indices]
 
                     # positive control on first index
-                    tokenizer.pad_token = tokenizer.eos_token
-                    # for k in range(min(50, context_enc.shape[0] - start)):
-                    for k in range(1):
-                        positive_tokens = tokenizer.encode(
-                            answer_dict[contexts[start+k].split('Question: ')[-1][:-8]], 
-                            truncation=True, 
-                            padding='max_length', 
-                            max_length=1024, 
-                            padding_side='left', 
-                            return_tensors='pt').flatten().to(cont.device)
-                        cont[start+k] = positive_tokens
+                    # tokenizer.pad_token = tokenizer.eos_token
+                    # # for k in range(min(50, context_enc.shape[0] - start)):
+                    # for k in range(1):
+                    #     positive_tokens = tokenizer.encode(
+                    #         answer_dict[contexts[start+k].split('Question: ')[-1][:-8]], 
+                    #         truncation=True, 
+                    #         padding='max_length', 
+                    #         max_length=1024, 
+                    #         padding_side='left', 
+                    #         return_tensors='pt').flatten().to(cont.device)
+                    #     cont[start+k] = positive_tokens
 
-            print (context_enc.shape, cont.shape)
+            # print (context_enc.shape, cont.shape)
 
             # tree expansion and selection
             if self.tree_expansion:

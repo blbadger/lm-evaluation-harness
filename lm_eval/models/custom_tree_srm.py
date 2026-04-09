@@ -1422,13 +1422,14 @@ class SRMHFLM(TemplateLM):
                     # print (self.tok_decode(cont[0]))
                     print (cont.shape)
                     # rewards = self.reward_model(cont[:, 1:], is_recurrent=True).logits[:, -1] # recurrent build of rewards, take last reward
-                for start in range(0, rewards.shape[0], 50):
+                for start in range(0, cont.shape[0], 50):
                     # ordered_indices = torch.topk(rewards[start:start+50], 50, largest=False).indices
                      # reorder based on reward, highest first
                     # cont[start:start+50] = cont[start:start+50][ordered_indices]
 
                     # positive control on first index
                     tokenizer.pad_token = tokenizer.eos_token
+                    print (contexts[start], answer_dict[contexts[start].split('Question: ')[-1][:-8]])
                     for k in range(50):
                         positive_tokens = tokenizer.encode(
                             answer_dict[contexts[start+k].split('Question: ')[-1][:-8]], 

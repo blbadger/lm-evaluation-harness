@@ -1428,15 +1428,16 @@ class SRMHFLM(TemplateLM):
 
                     # positive control on first index
                     tokenizer.pad_token = tokenizer.eos_token
-                    positive_tokens = tokenizer.encode(
-                        answer_dict[contexts[start].split('Question: ')[-1][:-8]], 
-                        truncation=True, 
-                        padding='max_length', 
-                        max_length=len(cont[start]), 
-                        padding_side='left', 
-                        return_tensors='pt').repeat(50, 1)
-                    print (positive_tokens.shape, cont[start].shape)
-                    cont[start:start+50] = positive_tokens
+                    for k in range(50):
+                        positive_tokens = tokenizer.encode(
+                            answer_dict[contexts[start+i].split('Question: ')[-1][:-8]], 
+                            truncation=True, 
+                            padding='max_length', 
+                            max_length=len(cont[start]), 
+                            padding_side='left', 
+                            return_tensors='pt').repeat(50, 1)
+                        print (positive_tokens.shape, cont[start].shape)
+                        cont[start:start+k] = positive_tokens
 
             # tree expansion and selection
             if self.tree_expansion:

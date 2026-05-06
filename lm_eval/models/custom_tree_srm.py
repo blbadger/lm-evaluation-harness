@@ -701,7 +701,6 @@ class SRMHFLM(TemplateLM):
         please consider subclassing HFLM and overriding this and other methods as needed.
         """
 
-        model_path = self.reward_model_path
         n_vocab = self.tokenizer.vocab_size # 8000
 
         model_args = (self.n_vocab, self.dim, self.max_length, self.depth)
@@ -1422,10 +1421,10 @@ class SRMHFLM(TemplateLM):
                 # cont = torch.ones((context_enc.shape[0], 1024), dtype=torch.long)
                 with torch.no_grad():
                     rewards = self.reward_model(cont[:, 1:], is_recurrent=True).logits[:, -1] # recurrent build of rewards, take last reward
-                for start in range(0, cont.shape[0], tree_size):
-                    ordered_indices = torch.topk(rewards[start:start+tree_size], tree_size).indices
+                for start in range(0, cont.shape[0], self.tree_size):
+                    ordered_indices = torch.topk(rewards[start:start+self.tree_size], self.tree_size).indices
                     # reorder based on reward, highest first
-                    cont[start:start+tree_size] = cont[start:start+tree_size][ordered_indices]
+                    cont[start:start+self.tree_size] = cont[start:start+self.tree_size][ordered_indices]
 
                     # positive control on first index
                     # tokenizer.pad_token = tokenizer.eos_token

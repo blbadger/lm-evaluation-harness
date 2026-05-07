@@ -136,6 +136,7 @@ class DualMLPMixer(DualMixer, GenerationMixin):
 			x = block(x, index, is_recurrent)
 
 		output = self.reward_head(x)
+		print (output.shape, output)
 		return CausalLMOutput(loss=0., logits=output)
 
 

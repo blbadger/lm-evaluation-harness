@@ -708,7 +708,8 @@ class DualMixer(DualMLPMixer, GenerationMixin):
 			logits = self.output_layer(x).unsqueeze(1)
 		else:
 			# reward model output
-			output = self.reward_head(x).squeeze(-1)
+			output = self.reward_head(x)
+			output = output.squeeze(-1)
 			if labels is not None:
 				loss = self.loss_fn(output, labels)
 			else:

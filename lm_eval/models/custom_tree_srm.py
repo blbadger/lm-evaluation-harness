@@ -1408,6 +1408,7 @@ class SRMHFLM(TemplateLM):
             attn_masks = attn_masks.to(self.device)
             # truncate input if necessary
             context_enc, attn_masks = context_enc[:, -(1024-256):], attn_masks[:, -(1024-256):]
+            print (self.tokenizer.decode(context_enc[0]))
             kwargs["max_length"] = 1024
             kwargs["max_new_tokens"] = 256 # for GSM8k
             # perform batched generation
@@ -1423,8 +1424,11 @@ class SRMHFLM(TemplateLM):
                     rewards = self.reward_model(cont[:, 1:], is_recurrent=True).logits[:, -1] # recurrent build of rewards, take last reward
                 for start in range(0, cont.shape[0], self.tree_size):
                     ordered_indices = torch.topk(rewards[start:start+self.tree_size], self.tree_size).indices
+                    print (ordered_indices)
                     # reorder based on reward, highest first
+                    print (cont[start:start+self.tree_size])
                     cont[start:start+self.tree_size] = cont[start:start+self.tree_size][ordered_indices]
+                    print (cont[start:start+self.tree_size])
 
                     # positive control on first index
                     # tokenizer.pad_token = tokenizer.eos_token

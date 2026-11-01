@@ -50,6 +50,7 @@ MODEL_MAPPING = {
     "sglang": "lm_eval.models.sglang_causallms:SGLANG",
     "sglang-generate": "lm_eval.models.sglang_generate_API:SGAPI",
     "steered": "lm_eval.models.hf_steered:SteeredHF",
+    "secret_transformer": "lm_eval.model.custom_secret_transformer:SecretTransHFLM"
     "textsynth": "lm_eval.models.textsynth:TextSynthLM",
     "srm": "lm_eval.models.custom_srm:SRMHFLM",
     "tree-srm": "lm_eval.models.custom_tree_srm:SRMHFLM",

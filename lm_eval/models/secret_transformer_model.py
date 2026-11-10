@@ -113,6 +113,7 @@ class ParallelNoninvertibleModel(nn.Module, GenerationMixin):
         self.main_input_name = 'input_ids'
         self._supports_cache_class = False
         self.cache_built = False
+        self.device = self.clm_head.weight.device
 
     def can_generate(self):
         return True

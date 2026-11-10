@@ -118,7 +118,7 @@ class MambaHFLM(TemplateLM):
         self.checkpoint_root = os.getenv('CHECKPOINT_ROOT')
         self.data_root = os.getenv('DATA_ROOT')
         self.compute_datatype = torch.bfloat16 if torch.cuda.get_device_capability()[0] >= 8 else torch.float16
-        dim = 256
+        dim = 512
         context_length = 1024
         n_layers = 16
         state_size = dim//2

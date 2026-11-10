@@ -26,7 +26,7 @@ from transformers.models.auto.modeling_auto import (
     MODEL_FOR_CAUSAL_LM_MAPPING_NAMES,
     MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING_NAMES,
 )
-from transformers import AutoTokenizer, LlamaConfig
+from transformers import AutoTokenizer, LlamaConfig, BertConfig
 
 from lm_eval import utils
 from lm_eval.api.model import TemplateLM
@@ -58,7 +58,7 @@ eval_logger = logging.getLogger(__name__)
 TOKENIZER_INFINITY = 1000000000000000019884624838656
 
 
-@register_model("memtrans")
+@register_model("secrettrans")
 class SecretTransHFLM(TemplateLM):
     """An abstracted Huggingface model class. Enables usage with both models of
     `transformers.AutoModelForCausalLM` and `transformers.AutoModelForSeq2SeqLM` classes.
@@ -616,14 +616,15 @@ class SecretTransHFLM(TemplateLM):
 
         model_path = pretrained
         n_vocab = self.tokenizer.vocab_size # will be 8000
-        model, inverter = init_noninvertible_parallelmodel(tokenizer, 
-            vocab_size, 
-            n_tokens_obfuscated, 
-            decoder_dim=decoder_dim, 
-            compress_provider_factor=compress_provider_factor, 
-            route_method=route_method, 
-            client_dim=client_dim, 
-            embeddings_to_unroll=embeddings_to_unroll
+        dim = 512
+        model, inverter = init_noninvertible_parallelmodel(self.tokenizer, 
+            n_vocab, 
+            n_tokens_obfuscated=256, 
+            decoder_dim=dim, 
+            compress_provider_factor=1, 
+            route_method='unroll_embedding', 
+            client_dim=dim, 
+            embeddings_to_unroll=1
         )
         safetensors.torch.load_model(model, model_path)
         self._model = torch.compile(model.to(self.compute_datatype))

@@ -3,10 +3,9 @@ from prettytable import PrettyTable
 import torch
 from einops import rearrange
 import transformers
-from transformers import AutoTokenizer, LlamaConfig, LlamaModel, LlamaForCausalLM
+from transformers import AutoTokenizer, LlamaConfig, LlamaModel, LlamaForCausalLM, BertConfig, BertForMaskedLM
 from transformers.modeling_outputs import BaseModelOutputWithPast
 from transformers.masking_utils import create_causal_mask
-from transformer_autoencoder import AbbreviatedModel
 import torch.nn as nn
 from transformers.modeling_outputs import CausalLMOutput
 
@@ -229,11 +228,11 @@ def init_noninvertible_parallelmodel(
     context_length=1024, 
     decoder_dim=512, 
     client_dim=512,
-    inverter_layers=1, 
-    unified_encoder_layers=4,
+    inverter_layers=8, 
+    unified_encoder_layers=2,
     provider_model_layers=16, 
-    client_encoder_layers=4,
-    unified_decoder_layers=4,
+    client_encoder_layers=2,
+    unified_decoder_layers=2,
     n_heads=4,
     embeddings_to_unroll=1
     ):
@@ -317,6 +316,7 @@ def init_noninvertible_parallelmodel(
         route_method=route_method,
         embeddings_to_unroll=embeddings_to_unroll
     )
+    return model, inverter
 
 if __name__ == '__main__':
     warnings.filterwarnings(action='ignore')

@@ -110,6 +110,9 @@ class ParallelNoninvertibleModel(nn.Module, GenerationMixin):
                  'vocab_size': n_vocab
                 }
         self.config = LlamaConfig(**config)
+        self.main_input_name = 'input_ids'
+        self._supports_cache_class = False
+        self.cache_built = False
 
     def can_generate(self):
         return True

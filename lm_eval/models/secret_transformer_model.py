@@ -10,6 +10,9 @@ import torch.nn as nn
 from transformers.modeling_outputs import CausalLMOutput
 from transformers.generation import GenerationMixin, GenerationConfig
 
+import torch._dynamo
+torch._dynamo.config.suppress_errors = True
+
 class ParallelNoninvertibleModel(nn.Module, GenerationMixin):
        
     def __init__(self, 
@@ -151,8 +154,8 @@ class ParallelNoninvertibleModel(nn.Module, GenerationMixin):
             
         # Attention mask is not properly passed, we need to pass ourselves
         attention_mask = torch.ones(x.shape).to(input_ids.device)
-        attention_mask = torch.where(x != 1, attention_mask, 0)
-        
+        attention_mask = torch.where(x != 1 and x != 0, attention_mask, 0)
+       
         encoder_outputs = self.unified_encoder(input_ids=x, attention_mask=attention_mask).last_hidden_state # shape [b t e]
         
         if self.route_method == 'embedding_split':

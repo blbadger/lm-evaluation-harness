@@ -8,9 +8,10 @@ from transformers.modeling_outputs import BaseModelOutputWithPast
 from transformers.masking_utils import create_causal_mask
 import torch.nn as nn
 from transformers.modeling_outputs import CausalLMOutput
+from transformers.generation import GenerationMixin, GenerationConfig
 
 
-class ParallelNoninvertibleModel(nn.Module):
+class ParallelNoninvertibleModel(nn.Module, GenerationMixin):
        
     def __init__(self, 
         n_vocab, 
@@ -99,6 +100,8 @@ class ParallelNoninvertibleModel(nn.Module):
 
         if self.provider_model.config.hidden_size != self.unified_decoder.config.hidden_size:
             self.provider_out_proj = nn.Linear(self.provider_model.config.hidden_size, self.unified_decoder.config.hidden_size)
+
+        self.generation_config = GenerationConfig()
 
     def can_generate(self):
         return True

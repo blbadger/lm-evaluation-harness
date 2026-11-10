@@ -102,6 +102,14 @@ class ParallelNoninvertibleModel(nn.Module, GenerationMixin):
             self.provider_out_proj = nn.Linear(self.provider_model.config.hidden_size, self.unified_decoder.config.hidden_size)
 
         self.generation_config = GenerationConfig()
+        config  = {
+                 'hidden_size':dim,
+                 'intermediate_size': 4*dim,
+                 'num_hidden_layers': 16,
+                 'num_attention_heads': 4,
+                 'vocab_size': n_vocab
+                }
+        self.config = LlamaConfig(**config)
 
     def can_generate(self):
         return True

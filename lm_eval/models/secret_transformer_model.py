@@ -184,9 +184,9 @@ class ParallelNoninvertibleModel(nn.Module, GenerationMixin):
 
         clm_x = self.unified_decoder(inputs_embeds=combined_output).last_hidden_state
         logits = self.clm_head(clm_x) # shape b t e 
-        output = rearrange(output, 'b t e -> b e t')
 
         if labels is not None:
+            output = rearrange(logits, 'b t e -> b e t')
             shift_logits = output[..., self.obfuscate_first_n:-1]
             shift_labels = labels.to(device)[..., self.obfuscate_first_n+1:]
             clm_loss = self.cel(shift_logits, shift_labels) 

@@ -143,8 +143,7 @@ class ParallelNoninvertibleModel(nn.Module, GenerationMixin):
         return embeddings
 
     def forward(self, input_ids, labels=None, attention_mask=None, **kwargs):
-        x = input_ids.to(device)
-
+        x = input_ids
         encoder_outputs = self.unified_encoder(input_ids=x, attention_mask=attention_mask).last_hidden_state # shape [b t e]
 
         if self.route_method == 'embedding_split':
@@ -173,9 +172,6 @@ class ParallelNoninvertibleModel(nn.Module, GenerationMixin):
 
         if self.provider_out_proj is not None:
             provider_output = self.provider_out_proj(provider_output)
-
-        inverter_input = provider_input # [b t e], all provider inputs need to be used for inversion tests
-        inverted_output = self.inversion_decoder(inputs_embeds=inverter_input) # returns logits, not last hidden state
 
         parallel_x = self.parallel_encoder(inputs_embeds=client_input).last_hidden_state
         if self.provider_out_proj is not None:

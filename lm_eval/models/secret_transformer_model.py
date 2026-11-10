@@ -142,7 +142,7 @@ class ParallelNoninvertibleModel(nn.Module, GenerationMixin):
         embeddings[:, :self.obfuscate_first_n, :] = mask_embedding # [b t e]
         return embeddings
 
-    def forward(self, input_ids, labels=None, attention_mask=None):
+    def forward(self, input_ids, labels=None, attention_mask=None, **kwargs):
         x = input_ids.to(device)
 
         encoder_outputs = self.unified_encoder(input_ids=x, attention_mask=attention_mask).last_hidden_state # shape [b t e]

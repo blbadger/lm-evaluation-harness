@@ -10,7 +10,6 @@ import torch.nn as nn
 from transformers.modeling_outputs import CausalLMOutput
 from transformers.generation import GenerationMixin, GenerationConfig
 
-
 class ParallelNoninvertibleModel(nn.Module, GenerationMixin):
        
     def __init__(self, 
@@ -144,8 +143,18 @@ class ParallelNoninvertibleModel(nn.Module, GenerationMixin):
 
     def forward(self, input_ids, labels=None, attention_mask=None, **kwargs):
         x = input_ids
+        
+        if x.shape[1] < 256:
+            pad_size = 256 - x.shape[1]
+            pad_tokens = torch.ones((x.shape[0], pad_size)).to(x.device).to(x.dtype)
+            x = torch.cat((pad_tokens, x), dim=1)
+            
+        # Attention mask is not properly passed, we need to pass ourselves
+        attention_mask = torch.ones(x.shape).to(input_ids.device)
+        attention_mask = torch.where(x != 1, attention_mask, 0)
+        
         encoder_outputs = self.unified_encoder(input_ids=x, attention_mask=attention_mask).last_hidden_state # shape [b t e]
-
+        
         if self.route_method == 'embedding_split':
             client_input = self.client_proj(encoder_outputs[:, :, :self.encoder_dim//2])
             provider_input = self.provider_proj(encoder_outputs[:, :, self.encoder_dim//2:])
@@ -186,13 +195,13 @@ class ParallelNoninvertibleModel(nn.Module, GenerationMixin):
         logits = self.clm_head(clm_x) # shape b t e 
 
         if labels is not None:
-            output = rearrange(logits, 'b t e -> b e t')
+            print ('using labels')
+            output = rearrange(logits, 'b t e -> b e t').clone()
             shift_logits = output[..., self.obfuscate_first_n:-1]
             shift_labels = labels.to(device)[..., self.obfuscate_first_n+1:]
             clm_loss = self.cel(shift_logits, shift_labels) 
         else:
             clm_loss = 0
-            inversion_loss = 0
         
         return CausalLMOutput(loss=clm_loss, logits=logits) # requires b t e shape
         

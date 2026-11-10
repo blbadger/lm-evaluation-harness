@@ -154,7 +154,8 @@ class ParallelNoninvertibleModel(nn.Module, GenerationMixin):
             
         # Attention mask is not properly passed, we need to pass ourselves
         attention_mask = torch.ones(x.shape).to(input_ids.device)
-        attention_mask = torch.where(x != 1 and x != 0, attention_mask, 0)
+        attention_mask = torch.where(x != 1, attention_mask, 0)
+        attention_mask = torch.where(x != 0, attention_mask, 0)
        
         encoder_outputs = self.unified_encoder(input_ids=x, attention_mask=attention_mask).last_hidden_state # shape [b t e]
         
@@ -198,7 +199,6 @@ class ParallelNoninvertibleModel(nn.Module, GenerationMixin):
         logits = self.clm_head(clm_x) # shape b t e 
 
         if labels is not None:
-            print ('using labels')
             output = rearrange(logits, 'b t e -> b e t').clone()
             shift_logits = output[..., self.obfuscate_first_n:-1]
             shift_labels = labels.to(device)[..., self.obfuscate_first_n+1:]

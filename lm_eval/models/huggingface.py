@@ -755,7 +755,7 @@ class HFLM(TemplateLM):
             model.forward = types.MethodType(patched_forward, model)
             return model
 
-        self._model = patch_left_pad(AutoModelForCausalLM.from_pretrained(path))
+        self._model = patch_left_pad(self._model)
 
 
     def _create_tokenizer(

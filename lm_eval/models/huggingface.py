@@ -7,6 +7,7 @@ from collections.abc import Iterator, Sequence
 from datetime import timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
+import types
 
 import jinja2
 import torch

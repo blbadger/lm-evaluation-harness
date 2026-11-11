@@ -730,6 +730,34 @@ class HFLM(TemplateLM):
 
             del _model_delta
 
+        # TODO: toggle args for patch
+        def patch_left_pad(model, target_len=256):
+            orig_forward = model.forward   # bound method
+
+            def patched_forward(self, input_ids=None, attention_mask=None, *args, **kwargs):
+                pad_size = 0
+                input_ids = input_ids[:, :1024] # truncate if necessary
+                if input_ids is not None:
+                    x = input_ids
+                    if x.shape[1] < target_len:
+                        pad_size = target_len - x.shape[1]
+                        pad = torch.ones((x.shape[0], pad_size), dtype=x.dtype, device=x.device)
+                        x = torch.cat((pad, x), dim=1)
+                    attention_mask = ((x != 0) & (x != 1)).long()
+                    input_ids = x
+
+                out = orig_forward(input_ids, attention_mask, *args, **kwargs)
+
+                if pad_size and getattr(out, "logits", None) is not None:
+                    out.logits = out.logits[:, pad_size:]
+                return out
+
+            model.forward = types.MethodType(patched_forward, model)
+            return model
+
+        self._model = patch_left_pad(AutoModelForCausalLM.from_pretrained(path))
+
+
     def _create_tokenizer(
         self,
         pretrained: str | transformers.PreTrainedModel,
@@ -1432,7 +1460,7 @@ class HFLM(TemplateLM):
                     f"Expected `kwargs` to be of type `dict` but got {type(gen_kwargs)}"
                 )
             if "max_gen_toks" in kwargs:
-                max_gen_toks = kwargs.pop("max_gen_toks")
+                max_gen_toks = min(256, kwargs.pop("max_gen_toks")) # TODO: swap back 
             else:
                 max_gen_toks = self.max_gen_toks
 

@@ -735,8 +735,8 @@ class HFLM(TemplateLM):
             orig_forward = model.forward
             model._pad_size = 0
 
-            def patched_forward(self, input_ids=None, attention_mask=None,
-                                past_key_values=None, *args, **kwargs):
+            def patched_forward(self, input_ids=None, attention_mask=None, **kwargs):
+                past_key_values = kwargs.get("past_key_values")
                 pad_size = 0
                 is_prefill = past_key_values is None or past_key_values.get_seq_length() == 0
 
@@ -749,25 +749,22 @@ class HFLM(TemplateLM):
                     attention_mask = ((x != 0) & (x != 1)).long()
                     input_ids = x
                     self._pad_size = pad_size
-                    # generate() computed these for the unpadded length; let the model recompute
                     kwargs.pop("cache_position", None)
                     kwargs["position_ids"] = (attention_mask.cumsum(-1) - 1).clamp(min=0)
 
                 elif input_ids is not None and self._pad_size:
-                    # Decode step: the cache contains `_pad_size` extra left-pad slots,
-                    # so the mask generate() gave us must be extended to match.
+                    # Decode step: cache holds `_pad_size` extra left-pad slots
                     attention_mask = F.pad(attention_mask, (self._pad_size, 0), value=0)
-                    kwargs.pop("cache_position", None)  # generate's value ignores the pad slots
+                    kwargs.pop("cache_position", None)
 
-                out = orig_forward(input_ids, attention_mask, past_key_values, *args, **kwargs)
+                out = orig_forward(input_ids=input_ids, attention_mask=attention_mask, **kwargs)
 
                 if pad_size and getattr(out, "logits", None) is not None:
                     out.logits = out.logits[:, pad_size:]
                 return out
-                
+
             model.forward = types.MethodType(patched_forward, model)
             return model
-
         self._model = patch_left_pad(self._model)
 
 

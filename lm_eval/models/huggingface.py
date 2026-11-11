@@ -764,6 +764,9 @@ class HFLM(TemplateLM):
                 if pad_size and getattr(out, "logits", None) is not None:
                     out.logits = out.logits[:, pad_size:]
                 return out
+                
+            model.forward = types.MethodType(patched_forward, model)
+            return model
 
         self._model = patch_left_pad(self._model)
 
